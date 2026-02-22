@@ -200,7 +200,7 @@ export const Employees = () => {
 
       {/* Create Employee Modal */}
       {isAddEmployeeOpen && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-slate-800 max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <button onClick={() => setIsAddEmployeeOpen(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X className="w-5 h-5"/></button>
             
@@ -273,7 +273,7 @@ export const Employees = () => {
 
       {/* Edit Credentials Modal */}
       {editingCredentials && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-slate-800 max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <button
               onClick={() => setEditingCredentials(null)}
@@ -347,7 +347,7 @@ export const Employees = () => {
 
       {/* Config Modal */}
       {editingEmployee && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm">
           <div className="bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative animate-in fade-in zoom-in duration-200 border border-slate-800 max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto">
              <button 
               onClick={() => setEditingEmployee(null)}
@@ -400,3 +400,4 @@ export const Employees = () => {
     </Layout>
   );
 };
+

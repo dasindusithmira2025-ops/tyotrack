@@ -68,7 +68,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const filteredNav = navItems.filter(item => item.roles.includes(user.role));
 
   return (
-    <div className="relative min-h-screen flex flex-col md:flex-row text-slate-200 overflow-hidden">
+    <div className="relative min-h-screen md:h-screen flex flex-col md:flex-row text-slate-200 overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 ambient-grid opacity-25" />
       <div className="pointer-events-none absolute -top-16 left-[20%] h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl float-orb" />
       <div className="pointer-events-none absolute top-[20%] -right-12 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl float-orb delay" />
@@ -157,14 +157,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="relative flex-1 p-4 md:p-8 overflow-y-auto w-full z-10">
+      <main className="relative flex-1 min-w-0 p-4 md:p-8 overflow-y-auto overflow-x-hidden w-full">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 12, filter: 'blur(6px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.24, ease: 'easeOut' }}
+            className="w-full"
           >
             {children}
           </motion.div>
