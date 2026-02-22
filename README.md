@@ -27,7 +27,7 @@ Required backend variables:
 - `TEST_LOGIN_PASSWORD` (default `password123`)
 
 Optional frontend variables:
-- `VITE_API_PROXY_TARGET` (default `http://localhost:3001`)
+- `VITE_API_PROXY_TARGET` (default `http://localhost:3061`)
 - `VITE_API_BASE_URL` (leave empty for proxied local dev)
 
 ## Install
@@ -70,7 +70,7 @@ Terminal 2 (frontend UI):
 npm run dev:frontend
 ```
 
-Frontend runs on `http://localhost:5173` and proxies `/api/*` to `http://localhost:3001`.
+Frontend runs on `http://localhost:5173` and proxies `/api/*` to `http://localhost:3061`.
 
 ## Docker Compose (Dev)
 
@@ -80,7 +80,7 @@ docker compose up --build
 
 Services:
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:3001`
+- Backend API: `http://localhost:3061`
 - PostgreSQL 16: `localhost:5433`
 
 Useful Docker commands:
@@ -104,7 +104,7 @@ docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
 Key production note:
-- Frontend Nginx now proxies `/api/*` -> `backend:3001` to avoid `502` from missing API upstream.
+- Frontend Nginx now proxies `/api/*` -> `backend:3061` to avoid `502` from missing API upstream.
 - Backend auto-bootstraps on each start:
   - `prisma migrate deploy`
   - auto-seed (`AUTO_SEED=true`, idempotent)

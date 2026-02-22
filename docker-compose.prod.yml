@@ -27,7 +27,7 @@ services:
       TEST_LOGIN_PASSWORD: ${TEST_LOGIN_PASSWORD:-password123}
       AUTO_SEED: ${AUTO_SEED:-true}
     expose:
-      - "3001"
+      - "3061"
     depends_on:
       db:
         condition: service_healthy
