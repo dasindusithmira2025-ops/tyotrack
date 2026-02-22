@@ -18,7 +18,7 @@ const StatCard = ({ label, value, icon: Icon, colorClass, delay, isAlert }: any)
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay }}
     className={cn(
-      "bg-slate-900 p-3 sm:p-4 md:p-6 rounded-xl border shadow-sm flex flex-col justify-between aspect-square sm:aspect-auto min-h-[108px] sm:min-h-[120px] md:min-h-[132px] relative overflow-hidden",
+      "bg-slate-900 p-3 sm:p-4 md:p-5 rounded-xl border shadow-sm relative overflow-hidden",
       isAlert ? "border-amber-500/50 shadow-amber-900/20" : "border-slate-800"
     )}
   >
