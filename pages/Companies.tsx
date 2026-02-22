@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { Company, User } from '../types';
 import { Button } from '../components/ui/Button';
 import { toast } from 'sonner';
-import { Building2, Plus, User as UserIcon, X, MapPin, Loader2, Shield, Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Building2, Plus, User as UserIcon, X, MapPin, Loader2, Shield, Lock, Mail, Eye, EyeOff, Pencil } from 'lucide-react';
 
 interface CompanyWithAdmins extends Company {
   admins?: User[];
@@ -19,6 +19,10 @@ export const Companies = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [showCompanyPassword, setShowCompanyPassword] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<User | null>(null);
+  const [adminEditForm, setAdminEditForm] = useState({ name: '', password: '' });
+  const [showAdminEditPassword, setShowAdminEditPassword] = useState(false);
+  const [savingAdminEdit, setSavingAdminEdit] = useState(false);
   
   // Forms
   const [newCompany, setNewCompany] = useState({ name: '', email: '', password: '' });
@@ -82,6 +86,47 @@ export const Companies = () => {
     }
   };
 
+  const openEditAdminModal = (admin: User) => {
+    setEditingAdmin(admin);
+    setAdminEditForm({ name: admin.name, password: '' });
+    setShowAdminEditPassword(false);
+  };
+
+  const handleUpdateAdmin = async () => {
+    if (!editingAdmin) {
+      return;
+    }
+
+    const trimmedName = adminEditForm.name.trim();
+    if (trimmedName.length < 2) {
+      toast.error('Name must be at least 2 characters');
+      return;
+    }
+
+    if (adminEditForm.password && adminEditForm.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    setSavingAdminEdit(true);
+    try {
+      await api.updateUser(editingAdmin.id, { name: trimmedName });
+
+      if (adminEditForm.password) {
+        await api.changePassword(editingAdmin.id, undefined, adminEditForm.password);
+      }
+
+      toast.success('Admin credentials updated');
+      setEditingAdmin(null);
+      setAdminEditForm({ name: '', password: '' });
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update admin');
+    } finally {
+      setSavingAdminEdit(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -116,7 +161,7 @@ export const Companies = () => {
                       <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                         <MapPin className="w-3 h-3" />
                         {company.timezone}
-                        {company.email && <span className="text-slate-600 mx-1">•</span>}
+                        {company.email && <span className="text-slate-600 mx-1">|</span>}
                         {company.email && <span className="text-slate-400">{company.email}</span>}
                       </div>
                     </div>
@@ -139,6 +184,15 @@ export const Companies = () => {
                           </div>
                           <span className="text-slate-300">{admin.name}</span>
                           <span className="text-slate-600 text-xs ml-auto">{admin.email}</span>
+                          <button
+                            type="button"
+                            onClick={() => openEditAdminModal(admin)}
+                            className="text-slate-400 hover:text-cyan-300 transition-colors"
+                            title="Edit admin access"
+                            aria-label={`Edit ${admin.name}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -296,6 +350,75 @@ export const Companies = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Admin Modal */}
+      {editingAdmin && (
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-slate-800 max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            <button
+              onClick={() => setEditingAdmin(null)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-400">
+                <Shield className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Edit Admin Access</h2>
+            </div>
+            <p className="text-xs text-slate-400 mb-6 ml-12">
+              Update admin name and password directly in the product.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none"
+                  value={adminEditForm.name}
+                  onChange={(e) => setAdminEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">
+                  New Password
+                  <span className="ml-1 text-xs text-slate-500">(optional)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showAdminEditPassword ? "text" : "password"}
+                    placeholder="Leave empty to keep existing password"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 pr-10 text-white focus:ring-2 focus:ring-cyan-500 outline-none"
+                    value={adminEditForm.password}
+                    onChange={(e) => setAdminEditForm((prev) => ({ ...prev, password: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminEditPassword((prev) => !prev)}
+                    className="absolute right-2 top-1.5 p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+                    aria-label={showAdminEditPassword ? "Hide password" : "Show password"}
+                  >
+                    {showAdminEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="pt-2 flex gap-3">
+                <Button variant="ghost" className="flex-1" onClick={() => setEditingAdmin(null)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" isLoading={savingAdminEdit} onClick={handleUpdateAdmin}>
+                  Save Access
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
+

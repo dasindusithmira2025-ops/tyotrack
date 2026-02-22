@@ -7,7 +7,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
 
 const schema = z.object({
-  currentPassword: z.string().min(1),
+  currentPassword: z.string().min(1).optional(),
   newPassword: z.string().min(8)
 });
 
@@ -33,7 +33,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       throw new ApiError(403, "Cross-tenant access is not allowed");
     }
 
+    if (session.role === "COMPANY_ADMIN" && !isOwner && user.role !== "EMPLOYEE") {
+      throw new ApiError(403, "Company admins can only change employee passwords");
+    }
+
     if (isOwner) {
+      if (!body.currentPassword) {
+        throw new ApiError(400, "Current password is required");
+      }
+
       const valid = await verifyPassword(body.currentPassword, user.passwordHash);
       if (!valid) {
         throw new ApiError(401, "Current password is incorrect");

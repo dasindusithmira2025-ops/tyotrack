@@ -6,7 +6,6 @@ import { User } from '../types';
 import { Button } from '../components/ui/Button';
 import { toast } from 'sonner';
 import { User as UserIcon, Lock, Settings2, X, Shield, Plus, Mail, Eye, EyeOff } from 'lucide-react';
-import { cn } from '../lib/utils';
 
 interface EmployeeWithProfile extends User {
   profile: {
@@ -22,6 +21,10 @@ export const Employees = () => {
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [newEmployee, setNewEmployee] = useState({ name: '', email: '', password: '' });
   const [showNewEmployeePassword, setShowNewEmployeePassword] = useState(false);
+  const [editingCredentials, setEditingCredentials] = useState<EmployeeWithProfile | null>(null);
+  const [credentialForm, setCredentialForm] = useState({ name: '', password: '' });
+  const [showCredentialPassword, setShowCredentialPassword] = useState(false);
+  const [savingCredentials, setSavingCredentials] = useState(false);
   
   const user = JSON.parse(localStorage.getItem('tyo_user') || '{}');
 
@@ -41,9 +44,45 @@ export const Employees = () => {
     loadEmployees();
   }, []);
 
-  const handleResetPassword = (emp: User) => {
-    // In a real app, this would trigger an API call
-    toast.success(`Password reset link sent to ${emp.email}`);
+  const openCredentialsEditor = (emp: EmployeeWithProfile) => {
+    setEditingCredentials(emp);
+    setCredentialForm({ name: emp.name, password: '' });
+    setShowCredentialPassword(false);
+  };
+
+  const handleSaveCredentials = async () => {
+    if (!editingCredentials) {
+      return;
+    }
+
+    const trimmedName = credentialForm.name.trim();
+    if (trimmedName.length < 2) {
+      toast.error('Name must be at least 2 characters');
+      return;
+    }
+
+    if (credentialForm.password && credentialForm.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    setSavingCredentials(true);
+    try {
+      await api.updateUser(editingCredentials.id, { name: trimmedName });
+
+      if (credentialForm.password) {
+        await api.changePassword(editingCredentials.id, undefined, credentialForm.password);
+      }
+
+      toast.success('Employee credentials updated');
+      setEditingCredentials(null);
+      setCredentialForm({ name: '', password: '' });
+      await loadEmployees();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update employee credentials');
+    } finally {
+      setSavingCredentials(false);
+    }
   };
 
   const openSettings = (emp: EmployeeWithProfile) => {
@@ -129,10 +168,10 @@ export const Employees = () => {
                         <Button 
                           variant="secondary" 
                           className="h-8 px-3 text-xs" 
-                          onClick={() => handleResetPassword(emp)}
-                          title="Reset Password"
+                          onClick={() => openCredentialsEditor(emp)}
+                          title="Edit Name and Password"
                         >
-                          <Lock className="w-3 h-3 mr-1" /> Reset
+                          <Lock className="w-3 h-3 mr-1" /> Access
                         </Button>
                         <Button 
                           variant="outline" 
@@ -228,6 +267,80 @@ export const Employees = () => {
               
               <Button type="submit" className="w-full mt-4">Create Employee</Button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Credentials Modal */}
+      {editingCredentials && (
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-4 pt-16 sm:pt-4 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-6 relative border border-slate-800 max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            <button
+              onClick={() => setEditingCredentials(null)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-400">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Edit Access</h2>
+            </div>
+            <p className="text-xs text-slate-400 mb-6 ml-12">
+              Update employee name and password directly in the product.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Full Name</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                  <input
+                    type="text"
+                    required
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 pl-9 text-white focus:ring-2 focus:ring-cyan-500 outline-none"
+                    value={credentialForm.name}
+                    onChange={(e) => setCredentialForm((prev) => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">
+                  New Password
+                  <span className="ml-1 text-xs text-slate-500">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                  <input
+                    type={showCredentialPassword ? 'text' : 'password'}
+                    placeholder="Leave empty to keep existing password"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 pl-9 pr-10 text-white focus:ring-2 focus:ring-cyan-500 outline-none"
+                    value={credentialForm.password}
+                    onChange={(e) => setCredentialForm((prev) => ({ ...prev, password: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCredentialPassword((prev) => !prev)}
+                    className="absolute right-2 top-1.5 p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+                    aria-label={showCredentialPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showCredentialPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <Button variant="ghost" className="flex-1" onClick={() => setEditingCredentials(null)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" isLoading={savingCredentials} onClick={handleSaveCredentials}>
+                  Save Access
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

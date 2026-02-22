@@ -75,15 +75,35 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       throw new ApiError(403, "Cross-tenant access is not allowed");
     }
 
+    if (session.role === "COMPANY_ADMIN" && !isOwner && current.role !== "EMPLOYEE") {
+      throw new ApiError(403, "Company admins can only manage employees");
+    }
+
+    if (session.role === "COMPANY_ADMIN" && body.role && body.role !== current.role) {
+      throw new ApiError(403, "Company admins cannot change user roles");
+    }
+
     if (!isAdmin && (body.status || body.role || body.backdateLimitDays !== undefined)) {
       throw new ApiError(403, "Only admins can change role, status, or backdate policy");
+    }
+
+    if (!isAdmin && body.email) {
+      throw new ApiError(403, "Only admins can change email addresses");
+    }
+
+    const normalizedEmail = body.email?.toLowerCase().trim();
+    if (normalizedEmail && normalizedEmail !== current.email) {
+      const existingEmailUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (existingEmailUser && existingEmailUser.id !== current.id) {
+        throw new ApiError(409, "User with this email already exists");
+      }
     }
 
     const updated = await prisma.user.update({
       where: { id },
       data: {
         ...(body.name ? { name: body.name } : {}),
-        ...(body.email ? { email: body.email.toLowerCase().trim() } : {}),
+        ...(normalizedEmail ? { email: normalizedEmail } : {}),
         ...(body.status ? { status: body.status } : {}),
         ...(body.role ? { role: body.role } : {}),
         ...(body.backdateLimitDays !== undefined ? { backdateLimitDays: body.backdateLimitDays } : {})

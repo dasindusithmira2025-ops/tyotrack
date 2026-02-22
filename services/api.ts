@@ -304,6 +304,22 @@ export const api = {
     });
   },
 
+  updateUser: async (
+    userId: string,
+    data: {
+      name?: string;
+      email?: string;
+      status?: "ACTIVE" | "SUSPENDED";
+      backdateLimitDays?: number;
+      role?: UserRole;
+    }
+  ) => {
+    return request<User>(`/api/users/${userId}`, {
+      method: "PATCH",
+      body: data
+    });
+  },
+
   createTimeEntry: async (
     userId: string,
     workspaceId: string,
@@ -339,13 +355,15 @@ export const api = {
     });
   },
 
-  changePassword: async (userId: string, current: string, newPass: string) => {
+  changePassword: async (userId: string, current: string | undefined, newPass: string) => {
+    const body: { newPassword: string; currentPassword?: string } = { newPassword: newPass };
+    if (current) {
+      body.currentPassword = current;
+    }
+
     return request(`/api/users/${userId}/change-password`, {
       method: "POST",
-      body: {
-        currentPassword: current,
-        newPassword: newPass
-      }
+      body
     });
   },
 
