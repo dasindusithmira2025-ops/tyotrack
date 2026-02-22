@@ -13,24 +13,26 @@ import { toast } from 'sonner';
 // --- Components ---
 
 const StatCard = ({ label, value, icon: Icon, colorClass, delay, isAlert }: any) => (
-  <motion.div 
+  <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay }}
     className={cn(
-      "bg-slate-900 p-6 rounded-xl border shadow-sm flex items-center justify-between relative overflow-hidden",
+      "bg-slate-900 p-3 sm:p-4 md:p-6 rounded-xl border shadow-sm flex flex-col justify-between aspect-square sm:aspect-auto min-h-[108px] sm:min-h-[120px] md:min-h-[132px] relative overflow-hidden",
       isAlert ? "border-amber-500/50 shadow-amber-900/20" : "border-slate-800"
     )}
   >
-    <div className="relative z-10">
-      <p className="text-slate-400 text-sm font-medium">{label}</p>
-      <div className="flex items-center gap-2 mt-1">
-        <p className={cn("text-2xl font-bold", isAlert ? "text-amber-400" : "text-slate-100")}>{value}</p>
-        {isAlert && <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />}
+    <div className="relative z-10 flex items-start justify-between gap-2">
+      <div>
+        <p className="text-slate-400 text-[11px] sm:text-xs md:text-sm font-medium leading-tight">{label}</p>
+        <div className="flex items-center gap-2 mt-1">
+          <p className={cn("text-lg sm:text-xl md:text-2xl font-bold", isAlert ? "text-amber-400" : "text-slate-100")}>{value}</p>
+          {isAlert && <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />}
+        </div>
       </div>
-    </div>
-    <div className={cn("p-3 rounded-lg bg-opacity-10 relative z-10", colorClass)}>
-      <Icon className={cn("w-6 h-6", colorClass.replace('bg-', 'text-'))} />
+      <div className={cn("p-2 sm:p-2.5 md:p-3 rounded-lg bg-opacity-10 relative z-10 shrink-0", colorClass)}>
+        <Icon className={cn("w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6", colorClass.replace('bg-', 'text-'))} />
+      </div>
     </div>
     {isAlert && (
       <div className="absolute inset-0 bg-amber-500/5 z-0 animate-pulse" />
@@ -316,13 +318,13 @@ export const Dashboard = () => {
 
         {/* Stats Row */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-pulse mb-8">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-slate-800 rounded-xl"></div>)}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-pulse mb-8">
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-24 sm:h-28 md:h-32 bg-slate-800 rounded-xl"></div>)}
           </div>
         ) : (
           <>
             {isEmployee && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
                 <StatCard label="Approved (Month)" value={totalHoursMonth.toFixed(1)} icon={Clock} colorClass="bg-blue-500/20 text-blue-400" delay={0} />
                 <StatCard label="Approved (Week)" value={totalHoursWeek.toFixed(1)} icon={CheckCircle} colorClass="bg-emerald-500/20 text-emerald-400" delay={0.1} />
                 <StatCard label="Approved Evening" value={totalEvening.toFixed(1)} icon={Sun} colorClass="bg-orange-500/20 text-orange-400" delay={0.2} />
@@ -331,7 +333,7 @@ export const Dashboard = () => {
             )}
             
             {isAdmin && (
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+               <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
                 <StatCard label="Total Employees" value={adminStats.activeEmployees} icon={Users} colorClass="bg-blue-500/20 text-blue-400" delay={0} />
                 <StatCard label="Active Projects" value={adminStats.activeProjects} icon={Folder} colorClass="bg-indigo-500/20 text-indigo-400" delay={0.1} />
                 <StatCard 
