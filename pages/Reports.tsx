@@ -7,6 +7,7 @@ import { cn, formatDate, formatTime, dateKeyFromLocalDate } from '../lib/utils';
 import { Calendar, Table2, Download } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from 'sonner';
+import { buildCsv, downloadCsv } from '../lib/csv';
 
 export const Reports = () => {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -59,7 +60,46 @@ export const Reports = () => {
   const grandTotal = entries.reduce((sum, item) => sum + item.totalHours, 0);
 
   const handleExport = () => {
-    toast.success(`Exporting ${entries.length} rows...`);
+    if (entries.length === 0) {
+      toast.error('No rows to export');
+      return;
+    }
+
+    const headers = [
+      'Date',
+      'Employee',
+      'Project',
+      'Start Time',
+      'End Time',
+      'Total Hours',
+      'Evening Hours',
+      'Night Hours',
+      'Status',
+      'Notes'
+    ];
+
+    const rows = entries.map((entry) => {
+      const employeeName = employees[entry.userId]?.name || 'Unknown';
+      const projectName = projects.find((project) => project.id === entry.projectId)?.name || entry.projectId;
+
+      return [
+        entry.date,
+        employeeName,
+        projectName,
+        formatTime(entry.startTime),
+        formatTime(entry.endTime),
+        entry.totalHours.toFixed(2),
+        entry.eveningHours.toFixed(2),
+        entry.nightHours.toFixed(2),
+        entry.status,
+        entry.notes ?? ''
+      ];
+    });
+
+    const content = buildCsv(headers, rows);
+    const filename = `approved-report_${dateRange.start}_to_${dateRange.end}.csv`;
+    downloadCsv(filename, content);
+    toast.success(`Exported ${entries.length} rows to ${filename}`);
   };
 
   return (
