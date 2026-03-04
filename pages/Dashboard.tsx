@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { api } from '../services/api';
 import { TimeEntry, EntryStatus, Workspace, Project, UserRole, User } from '../types';
-import { Clock, Moon, Sun, CheckCircle, ChevronLeft, ChevronRight, X, Plus, Building2, Users, FileText, Check, Activity, PieChart, Folder } from 'lucide-react';
+import { Clock, Moon, Sun, CheckCircle, ChevronLeft, ChevronRight, X, Plus, Building2, Users, Check, Activity, Folder } from 'lucide-react';
 import { cn, getGreeting, formatTime, formatDate, isValid24HourTime, dateKeyFromLocalDate } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { Button } from '../components/ui/Button';
@@ -77,11 +77,13 @@ export const Dashboard = () => {
   const [adminStats, setAdminStats] = useState({
     activeEmployees: 0,
     activeProjects: 0,
-    totalHoursMonth: 0,
     pendingApprovals: 0,
     pendingEntriesList: [] as TimeEntry[],
     employees: {} as Record<string, User>
   });
+  const [adminMonthCursor, setAdminMonthCursor] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  );
 
   // Form State
   const [formData, setFormData] = useState({
@@ -130,20 +132,11 @@ export const Dashboard = () => {
         
         const empMap = empList.reduce((acc, curr) => ({ ...acc, [curr.id]: curr }), {} as Record<string, User>);
         const pending = data.filter(e => e.status === EntryStatus.PENDING);
-        
-        const now = new Date();
-        const startOfMonthKey = dateKeyFromLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
-        
-        const approvedEntries = data.filter(e => e.status === EntryStatus.APPROVED);
-        const monthlyHours = approvedEntries
-          .filter(e => e.date >= startOfMonthKey)
-          .reduce((sum, e) => sum + e.totalHours, 0);
 
         setAdminStats({
           activeEmployees: empList.length,
           activeProjects: companyProjectList.filter(p => p.status === 'ACTIVE').length,
           pendingApprovals: pending.length,
-          totalHoursMonth: monthlyHours,
           pendingEntriesList: pending.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).slice(0, 5),
           employees: empMap
         });
@@ -279,6 +272,36 @@ export const Dashboard = () => {
   const totalEvening = thisMonthApproved.reduce((acc, curr) => acc + curr.eveningHours, 0);
   const totalNight = thisMonthApproved.reduce((acc, curr) => acc + curr.nightHours, 0);
 
+  // --- Admin Month-Wise Metrics ---
+  const adminMonthStart = new Date(adminMonthCursor.getFullYear(), adminMonthCursor.getMonth(), 1);
+  const adminMonthEnd = new Date(adminMonthCursor.getFullYear(), adminMonthCursor.getMonth() + 1, 0);
+  const adminMonthStartKey = dateKeyFromLocalDate(adminMonthStart);
+  const adminMonthEndKey = dateKeyFromLocalDate(adminMonthEnd);
+  const adminApprovedEntries = entries.filter((entry) => entry.status === EntryStatus.APPROVED);
+  const adminApprovedEntriesForMonth = adminApprovedEntries.filter(
+    (entry) => entry.date >= adminMonthStartKey && entry.date <= adminMonthEndKey
+  );
+  const adminTotalHoursMonth = adminApprovedEntriesForMonth.reduce((sum, entry) => sum + entry.totalHours, 0);
+
+  const adminEmployeeHours = useMemo(() => {
+    if (!isAdmin) return [] as Array<{ id: string; name: string; email: string; hours: number }>;
+
+    const totals = adminApprovedEntriesForMonth.reduce((acc, entry) => {
+      acc[entry.userId] = (acc[entry.userId] || 0) + entry.totalHours;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.values(adminStats.employees)
+      .filter((employee) => employee.role === UserRole.EMPLOYEE)
+      .map((employee) => ({
+        id: employee.id,
+        name: employee.name,
+        email: employee.email,
+        hours: Number((totals[employee.id] || 0).toFixed(2))
+      }))
+      .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name));
+  }, [adminApprovedEntriesForMonth, adminStats.employees, isAdmin]);
+
   // --- Status Color Helper ---
   const getDayStatus = (dayEntries: TimeEntry[]) => {
     if (dayEntries.length === 0) return null;
@@ -349,7 +372,7 @@ export const Dashboard = () => {
                   delay={0.2}
                   isAlert={adminStats.pendingApprovals > 0} 
                 />
-                <StatCard label="Approved Hours (Month)" value={adminStats.totalHoursMonth.toFixed(1)} icon={Activity} colorClass="bg-emerald-500/20 text-emerald-400" delay={0.3} />
+                <StatCard label="Approved Hours (Month)" value={adminTotalHoursMonth.toFixed(1)} icon={Activity} colorClass="bg-emerald-500/20 text-emerald-400" delay={0.3} />
               </div>
             )}
           </>
@@ -702,76 +725,77 @@ export const Dashboard = () => {
                </div>
             </div>
 
-            {/* 2. OPERATIONAL CHARTS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-               
-               {/* Submission Status Breakdown */}
-               <div className="glass-surface panel-lift rounded-xl p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                     <PieChart className="w-5 h-5 text-slate-400" />
-                     Submission Status
-                  </h3>
-                  <div className="relative h-48 flex items-center justify-center">
-                     {/* Mock Donut Chart CSS */}
-                     <div className="w-32 h-32 rounded-full border-[12px] border-emerald-500/20 border-t-emerald-500 border-l-amber-500 border-r-emerald-500 rotate-45 relative">
-                        <div className="absolute inset-0 flex items-center justify-center flex-col">
-                           <span className="text-2xl font-bold text-white">92%</span>
-                           <span className="text-[10px] text-slate-500 uppercase tracking-wide">Completion</span>
-                        </div>
-                     </div>
-                  </div>
-                  <div className="flex justify-center gap-4 mt-4 text-xs">
-                     <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span className="text-slate-400">Approved</span>
-                     </div>
-                     <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        <span className="text-slate-400">Pending</span>
-                     </div>
-                  </div>
-               </div>
+            {/* 2. MONTH-WISE HOURS OVERVIEW */}
+            <div className="glass-surface panel-lift rounded-xl p-4 sm:p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Monthly Work Hours</h3>
+                  <p className="text-sm text-slate-400">Approved hours by month and employee.</p>
+                </div>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <Button
+                    variant="ghost"
+                    className="h-8 w-8 p-0 rounded-full hover:bg-slate-800 text-slate-400"
+                    onClick={() =>
+                      setAdminMonthCursor(
+                        new Date(adminMonthCursor.getFullYear(), adminMonthCursor.getMonth() - 1, 1)
+                      )
+                    }
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </Button>
+                  <span className="text-sm font-semibold text-white min-w-[130px] text-center">
+                    {adminMonthCursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    className="h-8 w-8 p-0 rounded-full hover:bg-slate-800 text-slate-400"
+                    onClick={() =>
+                      setAdminMonthCursor(
+                        new Date(adminMonthCursor.getFullYear(), adminMonthCursor.getMonth() + 1, 1)
+                      )
+                    }
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
 
-               {/* Weekly Trend (Mock) */}
-               <div className="md:col-span-2 glass-surface panel-lift rounded-xl p-6 shadow-sm">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold text-white">Weekly Activity Trend</h3>
-                    <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Last 7 Days</span>
-                  </div>
-                  <div className="h-48 flex items-end gap-2 justify-between px-2">
-                    {[45, 60, 30, 80, 50, 20, 10].map((h, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                        <div className="w-full max-w-[40px] bg-blue-600/20 group-hover:bg-blue-600/40 rounded-t-lg relative transition-all" style={{ height: `${h}%` }}>
-                           <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">{h}h</div>
-                        </div>
-                        <span className="text-xs text-slate-500">Day {i+1}</span>
-                      </div>
-                    ))}
-                  </div>
-               </div>
-            </div>
+              <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-400">Total Approved Hours</p>
+                  <p className="text-2xl font-extrabold text-emerald-300 mt-1">{adminTotalHoursMonth.toFixed(2)}h</p>
+                </div>
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-400">Approved Entries</p>
+                  <p className="text-2xl font-extrabold text-white mt-1">{adminApprovedEntriesForMonth.length}</p>
+                </div>
+              </div>
 
-            {/* 3. Project Distribution (Lower Priority) */}
-            <div className="glass-surface panel-lift rounded-xl p-6 shadow-sm">
-               <h3 className="text-lg font-bold text-white mb-6">Project Distribution</h3>
-               <div className="space-y-4">
-                  {[
-                    { name: 'Frontend Revamp', val: 45, color: 'bg-blue-500' },
-                    { name: 'Backend Migration', val: 30, color: 'bg-emerald-500' },
-                    { name: 'Design System', val: 15, color: 'bg-amber-500' },
-                    { name: 'Other', val: 10, color: 'bg-slate-500' }
-                  ].map((p) => (
-                    <div key={p.name}>
-                      <div className="flex justify-between text-xs text-slate-400 mb-1">
-                        <span>{p.name}</span>
-                        <span>{p.val}%</span>
+              {adminEmployeeHours.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">
+                  No employees found for this company.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {adminEmployeeHours.map((employee) => (
+                    <div
+                      key={employee.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{employee.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{employee.email}</p>
                       </div>
-                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className={`h-full ${p.color}`} style={{ width: `${p.val}%` }}></div>
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-extrabold text-cyan-300">{employee.hours.toFixed(2)}h</p>
                       </div>
                     </div>
                   ))}
-               </div>
+                </div>
+              )}
             </div>
           </div>
         )}

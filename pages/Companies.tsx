@@ -151,22 +151,27 @@ export const Companies = () => {
               <div key={company.id} className="glass-surface panel-lift rounded-xl p-6 shadow-sm hover:border-slate-700 transition-colors flex flex-col h-full">
                 
                 {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 border border-slate-700 shadow-inner">
                       <Building2 className="w-6 h-6" />
                     </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-white">{company.name}</h3>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-lg text-white truncate">{company.name}</h3>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
                         <MapPin className="w-3 h-3" />
                         {company.timezone}
                         {company.email && <span className="text-slate-600 mx-1">|</span>}
-                        {company.email && <span className="text-slate-400">{company.email}</span>}
+                        {company.email && <span className="text-slate-400 break-all">{company.email}</span>}
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" className="text-xs" onClick={() => openAdminModal(company.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs w-full sm:w-auto justify-center"
+                    onClick={() => openAdminModal(company.id)}
+                  >
                      <UserIcon className="w-3 h-3 mr-1" />
                      Assign Admin
                   </Button>

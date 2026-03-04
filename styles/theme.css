@@ -24,6 +24,14 @@ body {
   background-attachment: fixed;
 }
 
+html,
+body,
+#root {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
 ::selection {
   background: rgba(56, 189, 248, 0.28);
   color: #f8fafc;
