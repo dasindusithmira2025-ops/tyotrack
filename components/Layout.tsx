@@ -16,7 +16,7 @@ import {
   FolderOpen,
   Layers3,
   FileJson,
-  ShieldAlert
+  Wrench
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { UserRole } from '../types';
@@ -33,6 +33,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   
   const user = JSON.parse(localStorage.getItem('tyo_user') || '{}');
+  const devModeActive = localStorage.getItem('tyo_dev_mode_active') === '1';
   
   const handleLogout = async () => {
     try {
@@ -41,6 +42,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       // Ignore network errors on logout and clear local state anyway.
     } finally {
       localStorage.removeItem('tyo_user');
+      localStorage.removeItem('tyo_dev_mode_active');
       navigate('/login');
     }
   };
@@ -56,7 +58,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { label: 'Projects', icon: FolderOpen, path: '/projects', roles: [UserRole.COMPANY_ADMIN] },
     { label: 'Time Policies', icon: FileJson, path: '/policies', roles: [UserRole.COMPANY_ADMIN] },
     { label: 'Reports', icon: BarChart3, path: '/reports', roles: [UserRole.COMPANY_ADMIN] },
-    { label: 'Audit Logs', icon: ShieldAlert, path: '/audit-logs', roles: [UserRole.COMPANY_ADMIN] },
     
     // Employee Navigation
     { label: 'Detailed Reports', icon: FileText, path: '/detailed-reports', roles: [UserRole.EMPLOYEE] },
@@ -144,6 +145,21 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <span>{item.label}</span>
             </NavLink>
           ))}
+          {devModeActive && (
+            <NavLink
+              to="/dev-mode"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) => cn(
+                "relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+                isActive
+                  ? "bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-white border border-amber-400/35"
+                  : "text-amber-200 border border-amber-400/20 hover:bg-amber-500/10 hover:text-white"
+              )}
+            >
+              <Wrench className="w-5 h-5 shrink-0" />
+              <span>Dev Mode</span>
+            </NavLink>
+          )}
         </nav>
 
         {/* Footer */}

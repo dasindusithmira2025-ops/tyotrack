@@ -13,7 +13,7 @@ import { Companies } from './pages/Companies';
 import { Projects } from './pages/Projects';
 import { Workspaces } from './pages/Workspaces';
 import { Policies } from './pages/Policies';
-import { AuditLogs } from './pages/AuditLogs';
+import { DevMode } from './pages/DevMode';
 import { Loader2 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -117,12 +117,6 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
 
-        <Route path="/audit-logs" element={
-          <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-            <AuditLogs />
-          </ProtectedRoute>
-        } />
-
         <Route path="/reports" element={
           <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
             <Reports />
@@ -141,6 +135,8 @@ const App: React.FC = () => {
             <Settings />
           </ProtectedRoute>
         } />
+
+        <Route path="/dev-mode" element={<DevMode />} />
         
         {/* Default Route */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
