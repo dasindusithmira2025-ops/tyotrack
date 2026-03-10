@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Login } from './pages/Login';
@@ -14,10 +13,12 @@ import { Projects } from './pages/Projects';
 import { Workspaces } from './pages/Workspaces';
 import { Policies } from './pages/Policies';
 import { DevMode } from './pages/DevMode';
+import { Schedules } from './pages/Schedules';
+import { MyShifts } from './pages/MyShifts';
+import { ShiftPushRegistrar } from './components/ShiftPushRegistrar';
 import { Loader2 } from 'lucide-react';
 import { api } from './services/api';
 
-// Protected Route Wrapper with Role Check
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: string[];
@@ -58,7 +59,7 @@ const App: React.FC = () => {
       }
     };
 
-    bootstrap();
+    void bootstrap();
   }, []);
 
   if (isBootstrapping) {
@@ -71,74 +72,119 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
+      <ShiftPushRegistrar />
       <Routes>
         <Route path="/login" element={<Login />} />
-        
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/companies" element={
-          <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-            <Companies />
-          </ProtectedRoute>
-        } />
 
-        {/* Company Admin Routes */}
-        <Route path="/approvals" element={
-          <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-            <Approvals />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/employees" element={
-          <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-            <Employees />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/companies"
+          element={
+            <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+              <Companies />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/projects" element={
-          <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-            <Projects />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/approvals"
+          element={
+            <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+              <Approvals />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/workspaces" element={
-          <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-            <Workspaces />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/employees"
+          element={
+            <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+              <Employees />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/policies" element={
-          <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-            <Policies />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/projects"
+          element={
+            <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+              <Projects />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/reports" element={
-          <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-            <Reports />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/workspaces"
+          element={
+            <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+              <Workspaces />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Employee Routes */}
-        <Route path="/detailed-reports" element={
-          <ProtectedRoute allowedRoles={['EMPLOYEE']}>
-            <DetailedReports />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/policies"
+          element={
+            <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+              <Policies />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        } />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/schedules"
+          element={
+            <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+              <Schedules />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/detailed-reports"
+          element={
+            <ProtectedRoute allowedRoles={['EMPLOYEE']}>
+              <DetailedReports />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/my-shifts"
+          element={
+            <ProtectedRoute allowedRoles={['EMPLOYEE']}>
+              <MyShifts />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/dev-mode" element={<DevMode />} />
-        
-        {/* Default Route */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

@@ -29,6 +29,28 @@ enum EntryStatus {
   REJECTED
 }
 
+enum ShiftSourceType {
+  MANUAL
+  IMPORT
+}
+
+enum ShiftStatus {
+  ACTIVE
+  DELETED
+}
+
+enum ShiftNotificationChannel {
+  EMAIL
+  PUSH
+}
+
+enum ShiftNotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 model Company {
   id         String       @id @default(cuid())
   tenantId   String       @unique @map("tenant_id")
@@ -45,7 +67,9 @@ model Company {
   timeEntries TimeEntry[]
   splits     TimeEntrySplit[]
   auditLogs  AuditLog[]
-
+  shifts     Shift[]
+  shiftNotificationDeliveries ShiftNotificationDelivery[]
+  pushSubscriptions PushSubscription[]
   @@index([status, createdAt])
   @@map("companies")
 }
@@ -83,7 +107,9 @@ model User {
   approvedSplits    TimeEntrySplit[] @relation("TimeEntryApprover")
   createdEntries    TimeEntry[]      @relation("TimeEntryCreator")
   auditLogs         AuditLog[]       @relation("AuditUser")
-
+  assignedShifts    Shift[]          @relation("ShiftWorker")
+  createdShifts     Shift[]          @relation("ShiftCreator")
+  pushSubscriptions PushSubscription[]
   @@index([tenantId, role, status])
   @@map("users")
 }
@@ -208,3 +234,81 @@ model AuditLog {
   @@index([tenantId, action, createdAt])
   @@map("audit_logs")
 }
+
+model Shift {
+  id                 String                     @id @default(cuid())
+  tenantId           String                     @map("tenant_id")
+  company            Company                    @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  workerId           String                     @map("worker_id")
+  worker             User                       @relation("ShiftWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  createdById        String                     @map("created_by_id")
+  createdBy          User                       @relation("ShiftCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  weekRange          String                     @map("week_range")
+  weekStartDate      String                     @map("week_start_date")
+  weekEndDate        String                     @map("week_end_date")
+  date               String
+  dayOfWeek          String                     @map("day_of_week")
+  location           String?
+  startTime          String?                    @map("start_time")
+  endTime            String?                    @map("end_time")
+  shiftStartAtUtc    DateTime?                  @map("shift_start_at_utc")
+  shiftEndAtUtc      DateTime?                  @map("shift_end_at_utc")
+  reminderDueAtUtc   DateTime?                  @map("reminder_due_at_utc")
+  isDayOff           Boolean                    @default(false) @map("is_day_off")
+  notificationSent   Boolean                    @default(false) @map("notification_sent")
+  notificationSentAt DateTime?                  @map("notification_sent_at")
+  sourceType         ShiftSourceType            @map("source_type")
+  sourceFileName     String?                    @map("source_file_name")
+  sourceRowNumber    Int?                       @map("source_row_number")
+  status             ShiftStatus                @default(ACTIVE)
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+  deliveries         ShiftNotificationDelivery[]
+
+  @@index([tenantId, date])
+  @@index([tenantId, workerId, date])
+  @@index([tenantId, weekStartDate])
+  @@index([tenantId, reminderDueAtUtc, notificationSent])
+  @@index([tenantId, status, date])
+  @@map("shifts")
+}
+
+model ShiftNotificationDelivery {
+  id                String                  @id @default(cuid())
+  tenantId          String                  @map("tenant_id")
+  company           Company                 @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  shiftId           String                  @map("shift_id")
+  shift             Shift                   @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  channel           ShiftNotificationChannel
+  status            ShiftNotificationStatus @default(PENDING)
+  providerMessageId String?                 @map("provider_message_id")
+  errorMessage      String?                 @map("error_message")
+  sentAt            DateTime?               @map("sent_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  @@unique([shiftId, channel])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, shiftId])
+  @@map("shift_notification_deliveries")
+}
+
+model PushSubscription {
+  id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id")
+  company    Company   @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  userId     String    @map("user_id")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String    @unique
+  p256dh     String
+  authSecret String    @map("auth_secret")
+  userAgent  String?   @map("user_agent")
+  lastSeenAt DateTime? @map("last_seen_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, userId])
+  @@index([tenantId, updatedAt])
+  @@map("push_subscriptions")
+}
+

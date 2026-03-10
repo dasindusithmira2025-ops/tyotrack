@@ -29,3 +29,6 @@ coverage
 # Local auth artifacts
 admin_cookies.txt
 emp_cookies.txt
+.env
+.env.*
+backend/.env

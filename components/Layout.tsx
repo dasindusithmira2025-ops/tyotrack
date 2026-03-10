@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -16,7 +16,8 @@ import {
   FolderOpen,
   Layers3,
   FileJson,
-  Wrench
+  Wrench,
+  CalendarDays
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { UserRole } from '../types';
@@ -64,6 +65,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     // Shared
     { label: 'Settings', icon: Settings, path: '/settings', roles: [UserRole.EMPLOYEE, UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN] },
+    { label: 'Schedules', icon: CalendarDays, path: '/schedules', roles: [UserRole.COMPANY_ADMIN] },
+    { label: 'My Shifts', icon: CalendarDays, path: '/my-shifts', roles: [UserRole.EMPLOYEE] },
   ];
 
   const filteredNav = navItems.filter(item => item.roles.includes(user.role));
@@ -199,3 +202,4 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     </div>
   );
 };
+
