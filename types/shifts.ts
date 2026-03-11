@@ -1,4 +1,4 @@
-﻿export type ShiftStatus = 'ACTIVE' | 'DELETED';
+export type ShiftStatus = 'ACTIVE' | 'DELETED';
 export type ShiftSourceType = 'MANUAL' | 'IMPORT';
 export type ShiftNotificationChannel = 'EMAIL' | 'PUSH';
 export type ShiftNotificationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
@@ -50,6 +50,27 @@ export interface ShiftMutationInput {
   startTime?: string | null;
   endTime?: string | null;
   isDayOff?: boolean;
+}
+
+export interface ShiftBulkDeleteInput {
+  tenantId?: string;
+  workerId: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ShiftBulkDeleteResult {
+  tenantId: string;
+  workerId: string;
+  startDate: string;
+  endDate: string;
+  affectedCount: number;
+}
+
+export interface ShiftReminderSettings {
+  tenantId: string;
+  emailRemindersEnabled: boolean;
+  updatedAt: string;
 }
 
 export interface ShiftImportPreviewRow {

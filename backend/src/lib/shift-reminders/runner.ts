@@ -1,4 +1,4 @@
-﻿import { PrismaClient, ShiftNotificationChannel, ShiftNotificationStatus, ShiftStatus } from "@prisma/client";
+import { PrismaClient, ShiftNotificationChannel, ShiftNotificationStatus, ShiftStatus } from "@prisma/client";
 import { DateTime } from "luxon";
 import { SHIFT_TIMEZONE } from "@/lib/shifts/time";
 import { sendShiftReminderEmail } from "./email";
@@ -55,6 +55,32 @@ async function upsertDelivery(prisma: PrismaClient, tenantId: string, shiftId: s
   });
 }
 
+async function getEmailRemindersEnabled(
+  prisma: PrismaClient,
+  tenantId: string,
+  cache: Map<string, boolean>
+): Promise<boolean> {
+  if (cache.has(tenantId)) {
+    return cache.get(tenantId) as boolean;
+  }
+
+  let enabled = true;
+  try {
+    const settings = await prisma.shiftReminderSetting.findUnique({
+      where: { tenantId },
+      select: { emailRemindersEnabled: true }
+    });
+    enabled = settings?.emailRemindersEnabled ?? true;
+  } catch (error: any) {
+    if (error?.code !== "P2021") {
+      throw error;
+    }
+    console.warn("[shift-reminders] shift_reminder_settings table not found; defaulting email reminders to enabled");
+  }
+  cache.set(tenantId, enabled);
+  return enabled;
+}
+
 export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<ReminderRunResult> {
   const now = DateTime.now().setZone(SHIFT_TIMEZONE).toUTC().toJSDate();
   const dueShifts = await prisma.shift.findMany({
@@ -89,6 +115,7 @@ export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<Re
   });
 
   const result: ReminderRunResult = { processed: 0, notified: 0, skipped: 0, failed: 0 };
+  const tenantEmailToggleCache = new Map<string, boolean>();
 
   for (const shift of dueShifts) {
     const locked = await acquireShiftLock(prisma, shift.id);
@@ -125,6 +152,7 @@ export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<Re
         continue;
       }
 
+      const emailEnabled = await getEmailRemindersEnabled(prisma, freshShift.tenantId, tenantEmailToggleCache);
       const emailDelivery = await upsertDelivery(prisma, freshShift.tenantId, freshShift.id, ShiftNotificationChannel.EMAIL);
       const pushDelivery = await upsertDelivery(prisma, freshShift.tenantId, freshShift.id, ShiftNotificationChannel.PUSH);
 
@@ -132,17 +160,30 @@ export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<Re
       let pushStatus = pushDelivery.status;
 
       if (emailStatus !== ShiftNotificationStatus.SENT && emailStatus !== ShiftNotificationStatus.SKIPPED) {
-        const emailResult = await sendShiftReminderEmail(freshShift as any);
-        emailStatus = emailResult.status === "SENT" ? ShiftNotificationStatus.SENT : ShiftNotificationStatus.SKIPPED;
-        await prisma.shiftNotificationDelivery.update({
-          where: { id: emailDelivery.id },
-          data: {
-            status: emailStatus,
-            sentAt: emailStatus === ShiftNotificationStatus.SENT ? now : null,
-            providerMessageId: emailResult.providerMessageId,
-            errorMessage: emailResult.errorMessage
-          }
-        });
+        if (!emailEnabled) {
+          emailStatus = ShiftNotificationStatus.SKIPPED;
+          await prisma.shiftNotificationDelivery.update({
+            where: { id: emailDelivery.id },
+            data: {
+              status: emailStatus,
+              sentAt: null,
+              providerMessageId: null,
+              errorMessage: "Email reminders are disabled by admin setting"
+            }
+          });
+        } else {
+          const emailResult = await sendShiftReminderEmail(freshShift as any);
+          emailStatus = emailResult.status === "SENT" ? ShiftNotificationStatus.SENT : ShiftNotificationStatus.SKIPPED;
+          await prisma.shiftNotificationDelivery.update({
+            where: { id: emailDelivery.id },
+            data: {
+              status: emailStatus,
+              sentAt: emailStatus === ShiftNotificationStatus.SENT ? now : null,
+              providerMessageId: emailResult.providerMessageId,
+              errorMessage: emailResult.errorMessage
+            }
+          });
+        }
       }
 
       if (pushStatus !== ShiftNotificationStatus.SENT && pushStatus !== ShiftNotificationStatus.SKIPPED) {
@@ -180,7 +221,12 @@ export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<Re
         });
       }
 
-      if (emailStatus === ShiftNotificationStatus.SENT && [ShiftNotificationStatus.SENT, ShiftNotificationStatus.SKIPPED].includes(pushStatus)) {
+      const emailCompleted = emailEnabled
+        ? emailStatus === ShiftNotificationStatus.SENT
+        : [ShiftNotificationStatus.SENT, ShiftNotificationStatus.SKIPPED].includes(emailStatus);
+      const pushCompleted = [ShiftNotificationStatus.SENT, ShiftNotificationStatus.SKIPPED].includes(pushStatus);
+
+      if (emailCompleted && pushCompleted) {
         await prisma.shift.update({
           where: { id: freshShift.id },
           data: {
@@ -202,3 +248,4 @@ export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<Re
 
   return result;
 }
+

@@ -1,8 +1,14 @@
-﻿import { Prisma, PrismaClient, ShiftSourceType, ShiftStatus, UserRole } from "@prisma/client";
+import { Prisma, PrismaClient, ShiftSourceType, ShiftStatus, UserRole } from "@prisma/client";
 import { ApiError } from "@/lib/http";
 import { resolveTenant, type SessionToken } from "@/lib/auth-guard";
 import { deriveDayOfWeek, deriveWeekMetadata, computeShiftTimes, buildWeekWindow } from "./time";
-import type { ShiftCreateInput, ShiftImportPreviewRowInput, ShiftUpdateInput } from "./schemas";
+import type {
+  ShiftBulkDeleteInput,
+  ShiftCreateInput,
+  ShiftImportPreviewRowInput,
+  ShiftReminderSettingsUpdateInput,
+  ShiftUpdateInput
+} from "./schemas";
 
 const shiftInclude = {
   worker: {
@@ -284,3 +290,66 @@ export async function createImportedShifts(
   );
 }
 
+export async function softDeleteShiftsInRange(
+  prisma: PrismaClient,
+  session: SessionToken,
+  input: ShiftBulkDeleteInput
+) {
+  const tenantId = resolveTenant(session, input.tenantId);
+  await assertWorker(prisma, tenantId, input.workerId);
+
+  const result = await prisma.shift.updateMany({
+    where: {
+      tenantId,
+      workerId: input.workerId,
+      date: {
+        gte: input.startDate,
+        lte: input.endDate
+      },
+      status: ShiftStatus.ACTIVE
+    },
+    data: {
+      status: ShiftStatus.DELETED
+    }
+  });
+
+  return {
+    tenantId,
+    workerId: input.workerId,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    affectedCount: result.count
+  };
+}
+
+export async function getShiftReminderSettings(prisma: PrismaClient, session: SessionToken, tenantIdInput?: string) {
+  const tenantId = resolveTenant(session, tenantIdInput);
+
+  return prisma.shiftReminderSetting.upsert({
+    where: { tenantId },
+    create: {
+      tenantId,
+      emailRemindersEnabled: true
+    },
+    update: {}
+  });
+}
+
+export async function updateShiftReminderSettings(
+  prisma: PrismaClient,
+  session: SessionToken,
+  input: ShiftReminderSettingsUpdateInput
+) {
+  const tenantId = resolveTenant(session, input.tenantId);
+
+  return prisma.shiftReminderSetting.upsert({
+    where: { tenantId },
+    create: {
+      tenantId,
+      emailRemindersEnabled: input.emailRemindersEnabled
+    },
+    update: {
+      emailRemindersEnabled: input.emailRemindersEnabled
+    }
+  });
+}

@@ -1,4 +1,11 @@
-﻿import { ShiftImportPreviewResult, ShiftMutationInput, ShiftRecord } from '../types/shifts';
+import {
+  ShiftBulkDeleteInput,
+  ShiftBulkDeleteResult,
+  ShiftImportPreviewResult,
+  ShiftMutationInput,
+  ShiftRecord,
+  ShiftReminderSettings
+} from '../types/shifts';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -48,6 +55,24 @@ export const shiftsApi = {
     jsonRequest<ShiftRecord>(`/api/shifts/${id}`, 'PATCH', body),
 
   remove: async (id: string) => jsonRequest<{ id: string; status: string }>(`/api/shifts/${id}`, 'DELETE'),
+
+  bulkDelete: async (body: ShiftBulkDeleteInput) =>
+    jsonRequest<ShiftBulkDeleteResult>('/api/shifts/bulk-delete', 'DELETE', body),
+
+  getReminderSettings: async (tenantId?: string) => {
+    const search = new URLSearchParams();
+    if (tenantId) {
+      search.set('tenantId', tenantId);
+    }
+    const suffix = search.toString() ? `?${search.toString()}` : '';
+    return request<ShiftReminderSettings>(`/api/shifts/reminders/settings${suffix}`);
+  },
+
+  updateReminderSettings: async (emailRemindersEnabled: boolean, tenantId?: string) =>
+    jsonRequest<ShiftReminderSettings>('/api/shifts/reminders/settings', 'PATCH', {
+      tenantId,
+      emailRemindersEnabled
+    }),
 
   previewImport: async (file: File, tenantId?: string) => {
     const formData = new FormData();

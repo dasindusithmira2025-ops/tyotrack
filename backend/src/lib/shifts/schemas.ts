@@ -1,4 +1,4 @@
-﻿import { ShiftSourceType, ShiftStatus } from "@prisma/client";
+import { ShiftSourceType, ShiftStatus } from "@prisma/client";
 import { z } from "zod";
 import { CLOCK_PATTERN } from "./time";
 
@@ -33,6 +33,23 @@ export const shiftListSchema = z.object({
   upcomingOnly: z.boolean().optional().default(false)
 });
 
+export const shiftBulkDeleteSchema = z
+  .object({
+    tenantId: z.string().optional(),
+    workerId: z.string().min(1),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  })
+  .refine((payload) => payload.endDate >= payload.startDate, {
+    message: "endDate must be on or after startDate",
+    path: ["endDate"]
+  });
+
+export const shiftReminderSettingsUpdateSchema = z.object({
+  tenantId: z.string().optional(),
+  emailRemindersEnabled: z.boolean()
+});
+
 export const shiftImportPreviewRowSchema = z.object({
   workerId: z.string().min(1),
   workerName: z.string().min(1),
@@ -58,4 +75,5 @@ export const shiftImportConfirmSchema = z.object({
 export type ShiftCreateInput = z.infer<typeof shiftCreateSchema>;
 export type ShiftUpdateInput = z.infer<typeof shiftUpdateSchema>;
 export type ShiftImportPreviewRowInput = z.infer<typeof shiftImportPreviewRowSchema>;
-
+export type ShiftBulkDeleteInput = z.infer<typeof shiftBulkDeleteSchema>;
+export type ShiftReminderSettingsUpdateInput = z.infer<typeof shiftReminderSettingsUpdateSchema>;

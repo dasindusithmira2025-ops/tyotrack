@@ -70,6 +70,7 @@ model Company {
   shifts     Shift[]
   shiftNotificationDeliveries ShiftNotificationDelivery[]
   pushSubscriptions PushSubscription[]
+  shiftReminderSetting ShiftReminderSetting?
   @@index([status, createdAt])
   @@map("companies")
 }
@@ -311,4 +312,17 @@ model PushSubscription {
   @@index([tenantId, updatedAt])
   @@map("push_subscriptions")
 }
+
+
+model ShiftReminderSetting {
+  id                    String   @id @default(cuid())
+  tenantId              String   @unique @map("tenant_id")
+  company               Company  @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  emailRemindersEnabled Boolean  @default(true) @map("email_reminders_enabled")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("shift_reminder_settings")
+}
+
 
