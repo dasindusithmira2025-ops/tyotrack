@@ -2,10 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { jsonError, jsonOk } from "@/lib/http";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextRequest } from "next/server";
+import { ensureShiftReminderAutoRunner } from "@/lib/shift-reminders/auto-runner";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
+    ensureShiftReminderAutoRunner(prisma);
 
     const user = await prisma.user.findUnique({
       where: { id: session.sub },

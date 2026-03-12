@@ -1,12 +1,32 @@
-﻿import { shiftsApi } from './shiftsApi';
+import { shiftsApi } from './shiftsApi';
 
 const SERVICE_WORKER_PATH = '/shift-notifications-sw.js';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+let cachedPublicKey: string | null = null;
 
-function getPublicKey(): string {
-  const key = import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY;
-  if (!key) {
+async function getPublicKey(): Promise<string> {
+  if (cachedPublicKey) {
+    return cachedPublicKey;
+  }
+
+  const envKey = import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY;
+  if (envKey) {
+    cachedPublicKey = envKey;
+    return envKey;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/push-subscriptions`, {
+    method: 'GET',
+    credentials: 'include'
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  const key = payload?.data?.publicKey;
+  if (!response.ok || !key) {
     throw new Error('Browser notifications are not configured for this environment');
   }
+
+  cachedPublicKey = key;
   return key;
 }
 
@@ -41,9 +61,10 @@ async function ensureSubscription(promptUser: boolean): Promise<string> {
   let subscription = await registration.pushManager.getSubscription();
 
   if (!subscription) {
+    const publicKey = await getPublicKey();
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(getPublicKey())
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
   }
 

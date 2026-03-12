@@ -1,4 +1,4 @@
-﻿import { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth, resolveTenant } from "@/lib/auth-guard";
 import { jsonError, jsonOk, ApiError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +17,21 @@ const subscriptionSchema = z.object({
 const deleteSchema = z.object({
   endpoint: z.string().url()
 });
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await requireAuth(req);
+    const tenantId = resolveTenant(session, req.nextUrl.searchParams.get("tenantId") ?? undefined);
+
+    return jsonOk({
+      tenantId,
+      publicKey: process.env.WEB_PUSH_PUBLIC_KEY ?? null,
+      configured: Boolean(process.env.WEB_PUSH_PUBLIC_KEY && process.env.WEB_PUSH_PRIVATE_KEY && process.env.WEB_PUSH_SUBJECT)
+    });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -92,4 +107,3 @@ export async function DELETE(req: NextRequest) {
     return jsonError(error);
   }
 }
-
