@@ -51,6 +51,10 @@ enum ShiftNotificationStatus {
   SKIPPED
 }
 
+enum NotificationType {
+  SHIFT_REMINDER
+}
+
 model Company {
   id         String       @id @default(cuid())
   tenantId   String       @unique @map("tenant_id")
@@ -71,6 +75,7 @@ model Company {
   shiftNotificationDeliveries ShiftNotificationDelivery[]
   pushSubscriptions PushSubscription[]
   shiftReminderSetting ShiftReminderSetting?
+  notifications Notification[]
   @@index([status, createdAt])
   @@map("companies")
 }
@@ -111,6 +116,7 @@ model User {
   assignedShifts    Shift[]          @relation("ShiftWorker")
   createdShifts     Shift[]          @relation("ShiftCreator")
   pushSubscriptions PushSubscription[]
+  notifications Notification[]
   @@index([tenantId, role, status])
   @@map("users")
 }
@@ -265,6 +271,7 @@ model Shift {
   createdAt          DateTime                   @default(now()) @map("created_at")
   updatedAt          DateTime                   @updatedAt @map("updated_at")
   deliveries         ShiftNotificationDelivery[]
+  notifications      Notification[]
 
   @@index([tenantId, date])
   @@index([tenantId, workerId, date])
@@ -314,6 +321,29 @@ model PushSubscription {
 }
 
 
+model Notification {
+  id        String           @id @default(cuid())
+  tenantId  String           @map("tenant_id")
+  company   Company          @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftId   String?          @map("shift_id")
+  shift     Shift?           @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  type      NotificationType @default(SHIFT_REMINDER)
+  eventKey  String           @unique @map("event_key")
+  title     String
+  message   String
+  payload   Json?
+  isRead    Boolean          @default(false) @map("is_read")
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@index([tenantId, userId, isRead, createdAt])
+  @@index([tenantId, shiftId])
+  @@map("notifications")
+}
+
 model ShiftReminderSetting {
   id                    String   @id @default(cuid())
   tenantId              String   @unique @map("tenant_id")
@@ -324,5 +354,9 @@ model ShiftReminderSetting {
 
   @@map("shift_reminder_settings")
 }
+
+
+
+
 
 

@@ -92,15 +92,6 @@ export const shiftsApi = {
       tenantId,
       fileName,
       rows
-    }),
-
-  subscribeBrowserNotifications: async (subscription: PushSubscriptionJSON, tenantId?: string) =>
-    jsonRequest<{ id: string; endpoint: string }>('/api/push-subscriptions', 'POST', {
-      tenantId,
-      endpoint: subscription.endpoint,
-      keys: subscription.keys
-    }),
-
-  removeBrowserSubscription: async (endpoint: string) =>
-    jsonRequest<{ deleted: boolean }>('/api/push-subscriptions', 'DELETE', { endpoint })
+    })
 };
+

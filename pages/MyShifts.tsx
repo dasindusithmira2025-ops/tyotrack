@@ -118,7 +118,7 @@ export const MyShifts = () => {
         </header>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/30 p-4 text-sm text-slate-400">
-          Browser notifications are optional. If you deny permission, the scheduling pages still work normally and reminder emails continue independently.
+          Browser notifications are optional. If you deny permission, the scheduling pages still work normally and in-app reminders remain available.
         </div>
 
         {loading ? (
@@ -133,4 +133,6 @@ export const MyShifts = () => {
     </Layout>
   );
 };
+
+
 

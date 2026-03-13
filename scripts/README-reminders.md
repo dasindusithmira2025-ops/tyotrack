@@ -1,45 +1,27 @@
-﻿# Reminder Runner
+# In-House Shift Reminders
 
 ## What it does
 
-The reminder runner calls `POST /api/internal/shifts/reminders/run` once every 60 seconds.
-That endpoint finds due shifts, sends the reminder email, sends the browser notification when a subscription exists, and marks the shift as notified so it cannot be delivered twice.
+The weekly shift reminder system now runs fully in-house inside the backend process.
+It checks due shifts every minute, creates internal `notifications` records, and marks the related shift as notified.
+No external cron service, SMTP provider, or third-party browser push gateway is required.
 
-## Run locally
+## How it runs
 
-1. Make sure `backend/.env` contains `SHIFT_REMINDER_RUNNER_TOKEN`.
-2. Start the backend on `http://localhost:3061`.
-3. Export the token in your shell.
-4. Run the script:
+1. The backend auto-runner starts from authenticated app traffic.
+2. The auto-runner interval is controlled by `SHIFT_REMINDER_AUTORUN_INTERVAL_MS`.
+3. Reminder records are stored in the database table `notifications`.
+4. The frontend polls `/api/notifications` and shows native browser notifications when permission is granted.
 
-```sh
-export SHIFT_REMINDER_RUNNER_TOKEN="your-token-here"
-./scripts/start-reminder-cron.sh
+## Required backend env flags
+
+```env
+SHIFT_REMINDER_AUTORUN=true
+SHIFT_REMINDER_AUTORUN_INTERVAL_MS=60000
 ```
 
-Optional override:
+## Optional internal trigger endpoint
 
-```sh
-export REMINDER_RUNNER_URL="http://localhost:3061/api/internal/shifts/reminders/run"
-./scripts/start-reminder-cron.sh
-```
+The internal endpoint `POST /api/internal/shifts/reminders/run` can still be used for manual triggering.
+It remains token-protected using `x-shift-run-token`.
 
-The script logs every attempt with a timestamp. A non-200 response is printed and the loop keeps running.
-
-## cron-job.org setup for production
-
-Use a one-minute cron job that sends a `POST` request to your production endpoint.
-
-- URL: `https://your-domain.com/api/internal/shifts/reminders/run`
-- Method: `POST`
-- Frequency: every 1 minute
-- Header name: `x-shift-run-token`
-- Header value: the exact `SHIFT_REMINDER_RUNNER_TOKEN` value from production
-
-Exact header format:
-
-```text
-x-shift-run-token: your-generated-runner-token
-```
-
-No request body is required.

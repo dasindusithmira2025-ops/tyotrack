@@ -207,7 +207,7 @@ export const Schedules = () => {
     try {
       const settings = await shiftsApi.updateReminderSettings(nextValue, user.companyId);
       setEmailRemindersEnabled(settings.emailRemindersEnabled);
-      toast.success(settings.emailRemindersEnabled ? '1-hour email reminders enabled' : '1-hour email reminders disabled');
+      toast.success(settings.emailRemindersEnabled ? '1-hour reminders enabled' : '1-hour reminders disabled');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update reminder setting');
     } finally {
@@ -232,7 +232,7 @@ export const Schedules = () => {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4 sm:p-5">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
             <div>
-              <p className="text-sm font-semibold text-white mb-2">Enable 1-Hour Email Reminders</p>
+              <p className="text-sm font-semibold text-white mb-2">Enable 1-Hour Reminders</p>
               <button
                 type="button"
                 onClick={() => void handleToggleEmailReminders()}
@@ -249,7 +249,7 @@ export const Schedules = () => {
                 />
               </button>
               <p className="text-xs text-slate-400 mt-2">
-                {emailRemindersEnabled ? 'Email reminders are active for due shifts.' : 'Email reminders are globally disabled.'}
+                {emailRemindersEnabled ? 'In-house reminders are active for due shifts.' : 'In-house reminders are globally disabled.'}
               </p>
             </div>
 
@@ -325,3 +325,5 @@ export const Schedules = () => {
     </Layout>
   );
 };
+
+
