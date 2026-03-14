@@ -55,6 +55,11 @@ enum NotificationType {
   SHIFT_REMINDER
 }
 
+enum DbBackupStatus {
+  SUCCESS
+  FAILED
+}
+
 model Company {
   id         String       @id @default(cuid())
   tenantId   String       @unique @map("tenant_id")
@@ -359,4 +364,22 @@ model ShiftReminderSetting {
 
 
 
+
+
+model DbBackupLog {
+  id            String         @id @default(cuid())
+  triggeredBy   String         @map("triggered_by")
+  exportType    String         @map("export_type")
+  filePath      String?        @map("file_path")
+  fileSizeBytes Int?           @map("file_size_bytes")
+  durationMs    Int?           @map("duration_ms")
+  status        DbBackupStatus
+  errorMessage  String?        @map("error_message")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@index([triggeredBy, createdAt])
+  @@index([exportType, createdAt])
+  @@map("db_backup_logs")
+}
 

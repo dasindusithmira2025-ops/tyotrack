@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Login } from './pages/Login';
@@ -15,6 +15,7 @@ import { Policies } from './pages/Policies';
 import { DevMode } from './pages/DevMode';
 import { Schedules } from './pages/Schedules';
 import { MyShifts } from './pages/MyShifts';
+import { DevTerminalPanel } from './pages/DevTerminalPanel';
 import { ShiftPushRegistrar } from './components/ShiftPushRegistrar';
 import { Loader2 } from 'lucide-react';
 import { api } from './services/api';
@@ -39,6 +40,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
   return <>{children}</>;
 };
+
+const DEV_PANEL_ROUTE = (import.meta.env.VITE_DEV_PANEL_PATH as string | undefined) || '/__ops_terminal';
 
 const App: React.FC = () => {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
@@ -185,6 +188,7 @@ const App: React.FC = () => {
         />
 
         <Route path="/dev-mode" element={<DevMode />} />
+        <Route path={DEV_PANEL_ROUTE} element={<DevTerminalPanel />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
@@ -194,3 +198,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
