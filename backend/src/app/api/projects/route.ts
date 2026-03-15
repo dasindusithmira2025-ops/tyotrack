@@ -12,13 +12,42 @@ const createProjectSchema = z.object({
   workspaceId: z.string().optional()
 });
 
+function serializeProjects(
+  projects: Array<{
+    id: string;
+    tenantId: string;
+    name: string;
+    color: string;
+    status: "ACTIVE" | "ARCHIVED";
+    workspaceId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    _count: { assignments: number };
+  }>
+) {
+  return projects.map(({ _count, ...project }) => ({
+    ...project,
+    assignedEmployeeCount: _count.assignments
+  }));
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     const tenantIdQuery = req.nextUrl.searchParams.get("tenantId");
     const workspaceId = req.nextUrl.searchParams.get("workspaceId");
-
     const status = req.nextUrl.searchParams.get("status") as "ACTIVE" | "ARCHIVED" | null;
+
+    const assignmentFilter =
+      session.role === "EMPLOYEE"
+        ? {
+            assignments: {
+              some: {
+                userId: session.sub
+              }
+            }
+          }
+        : {};
 
     if (workspaceId) {
       const workspace = await prisma.workspace.findUnique({
@@ -31,30 +60,40 @@ export async function GET(req: NextRequest) {
       }
 
       const tenantId = resolveTenant(session, workspace.tenantId);
-
       const projects = await prisma.project.findMany({
         where: {
           tenantId,
           workspaceId,
-          ...(status ? { status } : {})
+          ...(status ? { status } : {}),
+          ...assignmentFilter
         },
-        orderBy: { createdAt: "desc" }
+        orderBy: { createdAt: "desc" },
+        include: {
+          _count: {
+            select: { assignments: true }
+          }
+        }
       });
 
-      return jsonOk(projects);
+      return jsonOk(serializeProjects(projects));
     }
 
     const tenantId = resolveTenant(session, tenantIdQuery);
-
     const projects = await prisma.project.findMany({
       where: {
         tenantId,
-        ...(status ? { status } : {})
+        ...(status ? { status } : {}),
+        ...assignmentFilter
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: {
+          select: { assignments: true }
+        }
+      }
     });
 
-    return jsonOk(projects);
+    return jsonOk(serializeProjects(projects));
   } catch (error) {
     return jsonError(error);
   }

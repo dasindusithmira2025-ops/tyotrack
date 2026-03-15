@@ -178,6 +178,21 @@ export async function createTimeEntryWithSplits(params: CreateTimeEntryParams) {
     throw new ApiError(404, "Project not found or inactive");
   }
 
+  if (user.role === "EMPLOYEE") {
+    const assignment = await params.prisma.projectAssignment.findFirst({
+      where: {
+        tenantId: params.tenantId,
+        projectId: params.projectId,
+        userId: params.userId
+      },
+      select: { id: true }
+    });
+
+    if (!assignment) {
+      throw new ApiError(403, "This employee is not assigned to the selected project");
+    }
+  }
+
   if (params.actorRole !== "SUPER_ADMIN" && params.actorRole !== "COMPANY_ADMIN" && params.actorId !== params.userId) {
     throw new ApiError(403, "Employees can only create their own entries");
   }

@@ -3,7 +3,7 @@ import { EntryStatus, Company, Project, TimeEntry, User, UserRole, Workspace } f
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 interface ApiOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
 }
 
@@ -248,6 +248,19 @@ export const api = {
       method: "POST",
       body: { workspaceId, name, color }
     });
+  },
+
+  getProjectAssignments: async (projectId: string): Promise<string[]> => {
+    const result = await request<{ projectId: string; assignedUserIds: string[] }>(`/api/projects/${projectId}/assignments`);
+    return result.assignedUserIds;
+  },
+
+  updateProjectAssignments: async (projectId: string, userIds: string[]): Promise<string[]> => {
+    const result = await request<{ projectId: string; assignedUserIds: string[] }>(`/api/projects/${projectId}/assignments`, {
+      method: "PUT",
+      body: { userIds }
+    });
+    return result.assignedUserIds;
   },
 
   toggleProjectStatus: async (projectId: string) => {

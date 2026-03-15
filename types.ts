@@ -47,6 +47,7 @@ export interface Project {
   color: string;
   status: 'ACTIVE' | 'ARCHIVED';
   totalHoursLogged?: number;
+  assignedEmployeeCount?: number;
 }
 
 export interface TimeEntry {
