@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { notificationsApi } from '../services/notificationsApi';
+import { showBrowserNotification } from '../services/browserNotifications';
 
 const POLL_INTERVAL_MS = 30000;
 
@@ -27,18 +28,21 @@ export const ShiftPushRegistrar: React.FC = () => {
           return;
         }
 
+        const deliveredIds: string[] = [];
         for (const item of unread) {
           try {
-            new Notification(item.title, {
-              body: item.message,
-              tag: `tyotrack-${item.id}`
-            });
+            const displayed = await showBrowserNotification(item);
+            if (displayed) {
+              deliveredIds.push(item.id);
+            }
           } catch (error) {
             console.warn('failed to show browser notification', error);
           }
         }
 
-        await notificationsApi.markRead(unread.map((item) => item.id));
+        if (deliveredIds.length) {
+          await notificationsApi.markRead(deliveredIds);
+        }
       } catch (error) {
         console.warn('notification polling failed', error);
       }
@@ -59,4 +63,3 @@ export const ShiftPushRegistrar: React.FC = () => {
 
   return null;
 };
-
