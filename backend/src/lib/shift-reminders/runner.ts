@@ -2,6 +2,7 @@ import { NotificationType, PrismaClient, ShiftNotificationChannel, ShiftNotifica
 import { DateTime } from "luxon";
 import { SHIFT_TIMEZONE } from "@/lib/shifts/time";
 import { sendShiftReminderEmail } from "./email";
+import { sendShiftReminderBrowserPush } from "./push";
 
 interface ReminderRunResult {
   processed: number;
@@ -195,14 +196,36 @@ export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<Re
         update: {}
       });
 
-      if (pushDelivery.status !== ShiftNotificationStatus.SENT) {
+      let pushStatus = pushDelivery.status;
+      if (pushStatus !== ShiftNotificationStatus.SENT) {
+        const pushResult = await sendShiftReminderBrowserPush({
+          prisma,
+          tenantId: freshShift.tenantId,
+          userId: freshShift.workerId,
+          shift: {
+            id: freshShift.id,
+            date: freshShift.date,
+            dayOfWeek: freshShift.dayOfWeek,
+            location: freshShift.location,
+            startTime: freshShift.startTime,
+            endTime: freshShift.endTime
+          }
+        });
+
+        pushStatus =
+          pushResult.status === "SENT"
+            ? ShiftNotificationStatus.SENT
+            : pushResult.status === "SKIPPED"
+              ? ShiftNotificationStatus.SKIPPED
+              : ShiftNotificationStatus.FAILED;
+
         await prisma.shiftNotificationDelivery.update({
           where: { id: pushDelivery.id },
           data: {
-            status: ShiftNotificationStatus.SENT,
-            sentAt: now,
-            providerMessageId: `inhouse:${notification.id}`,
-            errorMessage: null
+            status: pushStatus,
+            sentAt: pushStatus === ShiftNotificationStatus.SENT ? now : null,
+            providerMessageId: pushResult.providerMessageId ?? (pushStatus === ShiftNotificationStatus.SENT ? `inhouse:${notification.id}` : null),
+            errorMessage: pushResult.errorMessage
           }
         });
       }
@@ -242,8 +265,9 @@ export async function runShiftReminderDispatch(prisma: PrismaClient): Promise<Re
       }
 
       const emailCompleted = emailStatus === ShiftNotificationStatus.SENT || emailStatus === ShiftNotificationStatus.SKIPPED;
+      const pushCompleted = pushStatus === ShiftNotificationStatus.SENT || pushStatus === ShiftNotificationStatus.SKIPPED;
 
-      if (emailCompleted) {
+      if (emailCompleted && pushCompleted) {
         await prisma.shift.update({
           where: { id: freshShift.id },
           data: {
