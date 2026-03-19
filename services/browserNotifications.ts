@@ -123,18 +123,21 @@ export async function showBrowserNotification(notification: AppNotification): Pr
 
   const route = typeof notification.payload?.route === 'string' ? notification.payload.route : '/#/my-shifts';
   const registration = await registerNotificationServiceWorker();
+  const options = {
+    body: notification.message,
+    tag: `tyotrack-${notification.id}`,
+    badge: '/favicon.ico',
+    icon: '/favicon.ico',
+    requireInteraction: true,
+    renotify: true,
+    data: {
+      route
+    }
+  };
 
   if (registration && 'showNotification' in registration) {
     try {
-      await registration.showNotification(notification.title, {
-        body: notification.message,
-        tag: `tyotrack-${notification.id}`,
-        badge: '/favicon.ico',
-        icon: '/favicon.ico',
-        data: {
-          route
-        }
-      });
+      await registration.showNotification(notification.title, options);
       return true;
     } catch (error) {
       console.warn('failed to display service worker notification', error);
@@ -142,10 +145,7 @@ export async function showBrowserNotification(notification: AppNotification): Pr
   }
 
   try {
-    new Notification(notification.title, {
-      body: notification.message,
-      tag: `tyotrack-${notification.id}`
-    });
+    new Notification(notification.title, options);
     return true;
   } catch (error) {
     console.warn('failed to display browser notification', error);
