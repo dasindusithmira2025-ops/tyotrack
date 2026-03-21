@@ -3,6 +3,9 @@ import { runShiftReminderDispatch } from "./runner";
 
 let started = false;
 let inFlight = false;
+let lastOpportunisticDispatchAt = 0;
+
+const MIN_OPPORTUNISTIC_INTERVAL_MS = 15000;
 
 function getIntervalMs() {
   const parsed = Number(process.env.SHIFT_REMINDER_AUTORUN_INTERVAL_MS ?? "60000");
@@ -12,38 +15,40 @@ function getIntervalMs() {
   return parsed;
 }
 
+function isAutoRunnerEnabled() {
+  return (process.env.SHIFT_REMINDER_AUTORUN ?? "true").toLowerCase() !== "false";
+}
+
+async function dispatchOnce(prisma: PrismaClient, source: 'auto-runner' | 'opportunistic') {
+  if (inFlight) {
+    return;
+  }
+
+  inFlight = true;
+  try {
+    await runShiftReminderDispatch(prisma);
+  } catch (error) {
+    console.error(`[shift-reminders] ${source} dispatch failed`, error);
+  } finally {
+    inFlight = false;
+  }
+}
+
 export function ensureShiftReminderAutoRunner(prisma: PrismaClient): void {
   if (started) {
     return;
   }
 
-  const enabled = (process.env.SHIFT_REMINDER_AUTORUN ?? "true").toLowerCase() !== "false";
-  if (!enabled) {
+  if (!isAutoRunnerEnabled()) {
     return;
   }
 
   started = true;
   const intervalMs = getIntervalMs();
 
-  const tick = async () => {
-    if (inFlight) {
-      return;
-    }
-
-    inFlight = true;
-    try {
-      await runShiftReminderDispatch(prisma);
-    } catch (error) {
-      console.error("[shift-reminders] auto-run dispatch failed", error);
-    } finally {
-      inFlight = false;
-    }
-  };
-
-  // Trigger once immediately and then on interval.
-  void tick();
+  void dispatchOnce(prisma, 'auto-runner');
   const handle = setInterval(() => {
-    void tick();
+    void dispatchOnce(prisma, 'auto-runner');
   }, intervalMs);
 
   if (typeof (handle as any).unref === "function") {
@@ -51,4 +56,18 @@ export function ensureShiftReminderAutoRunner(prisma: PrismaClient): void {
   }
 
   console.info(`[shift-reminders] auto-run enabled every ${intervalMs}ms`);
+}
+
+export function triggerOpportunisticShiftReminderDispatch(prisma: PrismaClient): void {
+  if (!isAutoRunnerEnabled()) {
+    return;
+  }
+
+  const now = Date.now();
+  if (now - lastOpportunisticDispatchAt < MIN_OPPORTUNISTIC_INTERVAL_MS) {
+    return;
+  }
+
+  lastOpportunisticDispatchAt = now;
+  void dispatchOnce(prisma, 'opportunistic');
 }

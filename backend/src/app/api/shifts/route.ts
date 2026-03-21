@@ -1,15 +1,18 @@
-﻿import { UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { requireAuth, requireRoles } from "@/lib/auth-guard";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { triggerOpportunisticShiftReminderDispatch } from "@/lib/shift-reminders/auto-runner";
 import { shiftCreateSchema, shiftListSchema } from "@/lib/shifts/schemas";
 import { createShift, formatShift, listShifts } from "@/lib/shifts/service";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
+    triggerOpportunisticShiftReminderDispatch(prisma);
+
     const filters = shiftListSchema.parse({
       tenantId: req.nextUrl.searchParams.get("tenantId") ?? undefined,
       workerId: req.nextUrl.searchParams.get("workerId") ?? undefined,
@@ -53,4 +56,3 @@ export async function POST(req: NextRequest) {
     return jsonError(error);
   }
 }
-

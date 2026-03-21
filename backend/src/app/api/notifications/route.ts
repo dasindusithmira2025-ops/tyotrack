@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth-guard";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { triggerOpportunisticShiftReminderDispatch } from "@/lib/shift-reminders/auto-runner";
 
 const markReadSchema = z.object({
   ids: z.array(z.string().min(1)).max(200).optional(),
@@ -13,6 +14,8 @@ const markReadSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth(req);
+    triggerOpportunisticShiftReminderDispatch(prisma);
+
     const limitParam = Number(req.nextUrl.searchParams.get("limit") ?? "20");
     const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(100, Math.trunc(limitParam))) : 20;
     const unreadOnly = (req.nextUrl.searchParams.get("unreadOnly") ?? "true").toLowerCase() !== "false";
@@ -91,4 +94,3 @@ export async function PATCH(req: NextRequest) {
     return jsonError(error);
   }
 }
-
