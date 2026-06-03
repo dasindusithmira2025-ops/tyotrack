@@ -3,6 +3,55 @@ import { hashPassword } from "../src/lib/password";
 
 const prisma = new PrismaClient();
 
+const REPORT_DEMO_EMPLOYEE = {
+  id: "employee-lexmac-sithmira",
+  name: "Lexmac Sithmira",
+  email: "lexmacsithmira@gmail.com",
+  password: "Dasindu@13#"
+};
+
+const REPORT_DEMO_PROJECTS = [
+  { id: "project-synlab", name: "Synlab", color: "#0ea5e9" },
+  { id: "project-espresso-house", name: "Espresso House", color: "#a16207" },
+  { id: "project-extra-works", name: "Extra Works", color: "#22c55e" }
+];
+
+const REPORT_DEMO_ENTRIES = [
+  {
+    id: "report-demo-synlab-2026-05-28",
+    splitId: "report-demo-split-synlab-2026-05-28",
+    projectId: "project-synlab",
+    startTime: new Date("2026-05-28T15:00:00.000Z"),
+    endTime: new Date("2026-05-28T16:45:00.000Z"),
+    totalHours: 1.75,
+    eveningHours: 1.75,
+    nightHours: 0,
+    notes: "Report demo: Synlab evening entry"
+  },
+  {
+    id: "report-demo-espresso-house-2026-05-28",
+    splitId: "report-demo-split-espresso-house-2026-05-28",
+    projectId: "project-espresso-house",
+    startTime: new Date("2026-05-28T17:00:00.000Z"),
+    endTime: new Date("2026-05-28T18:30:00.000Z"),
+    totalHours: 1.5,
+    eveningHours: 1.5,
+    nightHours: 0,
+    notes: "Report demo: Espresso House evening entry"
+  },
+  {
+    id: "report-demo-extra-works-2026-05-28",
+    splitId: "report-demo-split-extra-works-2026-05-28",
+    projectId: "project-extra-works",
+    startTime: new Date("2026-05-28T10:00:00.000Z"),
+    endTime: new Date("2026-05-28T13:00:00.000Z"),
+    totalHours: 3,
+    eveningHours: 0,
+    nightHours: 0,
+    notes: "Report demo: Extra Works daytime entry"
+  }
+];
+
 async function main() {
   const superEmail = "super@tyo.com";
   const adminEmail = "alice@acme.com";
@@ -53,6 +102,7 @@ async function main() {
   const superHash = await hashPassword("password123");
   const adminHash = await hashPassword("password123");
   const employeeHash = await hashPassword("password123");
+  const reportDemoEmployeeHash = await hashPassword(REPORT_DEMO_EMPLOYEE.password);
 
   await prisma.user.upsert({
     where: { email: superEmail },
@@ -68,6 +118,30 @@ async function main() {
       passwordHash: superHash,
       role: "SUPER_ADMIN",
       status: "ACTIVE"
+    }
+  });
+
+  const reportDemoEmployee = await prisma.user.upsert({
+    where: { email: REPORT_DEMO_EMPLOYEE.email },
+    update: {
+      name: REPORT_DEMO_EMPLOYEE.name,
+      passwordHash: reportDemoEmployeeHash,
+      role: "EMPLOYEE",
+      status: "ACTIVE",
+      tenantId: acmeTenantId,
+      autoApproveEntries: true,
+      backdateLimitDays: 30
+    },
+    create: {
+      id: REPORT_DEMO_EMPLOYEE.id,
+      tenantId: acmeTenantId,
+      name: REPORT_DEMO_EMPLOYEE.name,
+      email: REPORT_DEMO_EMPLOYEE.email,
+      passwordHash: reportDemoEmployeeHash,
+      role: "EMPLOYEE",
+      status: "ACTIVE",
+      autoApproveEntries: true,
+      backdateLimitDays: 30
     }
   });
 
@@ -121,7 +195,125 @@ async function main() {
     });
   }
 
-  console.log("Seed complete. Demo credentials:\n- super@tyo.com / password123\n- alice@acme.com / password123\n- bob@acme.com / password123");
+  for (const reportProject of REPORT_DEMO_PROJECTS) {
+    await prisma.project.upsert({
+      where: { id: reportProject.id },
+      update: {
+        tenantId: acmeTenantId,
+        name: reportProject.name,
+        color: reportProject.color,
+        status: "ACTIVE",
+        workspaceId: acmeTenantId
+      },
+      create: {
+        id: reportProject.id,
+        tenantId: acmeTenantId,
+        name: reportProject.name,
+        color: reportProject.color,
+        status: "ACTIVE",
+        workspaceId: acmeTenantId
+      }
+    });
+
+    await prisma.projectAssignment.upsert({
+      where: {
+        projectId_userId: {
+          projectId: reportProject.id,
+          userId: reportDemoEmployee.id
+        }
+      },
+      update: {
+        tenantId: acmeTenantId
+      },
+      create: {
+        tenantId: acmeTenantId,
+        projectId: reportProject.id,
+        userId: reportDemoEmployee.id
+      }
+    });
+  }
+
+  const reportDemoDate = "2026-05-28";
+  const reportDemoDateUtc = new Date("2026-05-27T21:00:00.000Z");
+
+  for (const reportEntry of REPORT_DEMO_ENTRIES) {
+    await prisma.timeEntry.upsert({
+      where: { id: reportEntry.id },
+      update: {
+        tenantId: acmeTenantId,
+        userId: reportDemoEmployee.id,
+        createdById: null,
+        projectId: reportEntry.projectId,
+        workspaceId: acmeTenantId,
+        startTime: reportEntry.startTime,
+        endTime: reportEntry.endTime,
+        notes: reportEntry.notes,
+        status: "APPROVED",
+        totalHours: reportEntry.totalHours,
+        eveningHours: reportEntry.eveningHours,
+        nightHours: reportEntry.nightHours,
+        lockedAt: new Date("2026-05-28T19:00:00.000Z")
+      },
+      create: {
+        id: reportEntry.id,
+        tenantId: acmeTenantId,
+        userId: reportDemoEmployee.id,
+        projectId: reportEntry.projectId,
+        workspaceId: acmeTenantId,
+        startTime: reportEntry.startTime,
+        endTime: reportEntry.endTime,
+        notes: reportEntry.notes,
+        status: "APPROVED",
+        totalHours: reportEntry.totalHours,
+        eveningHours: reportEntry.eveningHours,
+        nightHours: reportEntry.nightHours,
+        lockedAt: new Date("2026-05-28T19:00:00.000Z")
+      }
+    });
+
+    await prisma.timeEntrySplit.upsert({
+      where: { id: reportEntry.splitId },
+      update: {
+        tenantId: acmeTenantId,
+        timeEntryId: reportEntry.id,
+        userId: reportDemoEmployee.id,
+        projectId: reportEntry.projectId,
+        date: reportDemoDateUtc,
+        localDate: reportDemoDate,
+        startTime: reportEntry.startTime,
+        endTime: reportEntry.endTime,
+        status: "APPROVED",
+        totalHours: reportEntry.totalHours,
+        eveningHours: reportEntry.eveningHours,
+        nightHours: reportEntry.nightHours,
+        notes: reportEntry.notes,
+        approvedById: null,
+        approvedAt: new Date("2026-05-28T19:00:00.000Z"),
+        rejectionReason: null
+      },
+      create: {
+        id: reportEntry.splitId,
+        tenantId: acmeTenantId,
+        timeEntryId: reportEntry.id,
+        userId: reportDemoEmployee.id,
+        projectId: reportEntry.projectId,
+        date: reportDemoDateUtc,
+        localDate: reportDemoDate,
+        startTime: reportEntry.startTime,
+        endTime: reportEntry.endTime,
+        status: "APPROVED",
+        totalHours: reportEntry.totalHours,
+        eveningHours: reportEntry.eveningHours,
+        nightHours: reportEntry.nightHours,
+        notes: reportEntry.notes,
+        approvedAt: new Date("2026-05-28T19:00:00.000Z")
+      }
+    });
+  }
+
+  console.log(
+    "Seed complete. Demo credentials:\n- super@tyo.com / password123\n- alice@acme.com / password123\n- bob@acme.com / password123\n- lexmacsithmira@gmail.com / Dasindu@13#"
+  );
 }
 
 main()
