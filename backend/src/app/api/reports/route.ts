@@ -2,8 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth, resolveTenant } from "@/lib/auth-guard";
 import { ApiError, jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
-import { aggregateReport } from "@/lib/reporting";
-import { formatSplitForFrontend } from "@/lib/time-entry";
+import { aggregateReport, formatDailyEmployeeSummaryRows } from "@/lib/reporting";
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,7 +19,8 @@ export async function GET(req: NextRequest) {
 
     const userId = session.role === "EMPLOYEE" ? session.sub : requestedUserId;
 
-    const splits = await prisma.timeEntrySplit.findMany({
+    const groups = await prisma.timeEntrySplit.groupBy({
+      by: ["localDate", "userId"],
       where: {
         tenantId,
         status: "APPROVED",
@@ -30,32 +30,30 @@ export async function GET(req: NextRequest) {
         },
         ...(userId ? { userId } : {})
       },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        project: { select: { id: true, name: true, color: true } },
-        timeEntry: { select: { workspaceId: true } }
+      _sum: {
+        totalHours: true,
+        eveningHours: true,
+        nightHours: true
       },
-      orderBy: [{ localDate: "desc" }, { startTime: "desc" }]
+      orderBy: [{ localDate: "desc" }, { userId: "asc" }]
     });
 
-    const totals = aggregateReport(
-      splits.map((item) => ({
-        totalHours: item.totalHours,
-        eveningHours: item.eveningHours,
-        nightHours: item.nightHours
-      }))
-    );
+    const userIds = [...new Set(groups.map((group) => group.userId).filter(Boolean))];
+    const users = userIds.length
+      ? await prisma.user.findMany({
+          where: {
+            id: { in: userIds },
+            tenantId
+          },
+          select: { id: true, name: true, email: true }
+        })
+      : [];
+    const rows = formatDailyEmployeeSummaryRows(groups, users);
+    const totals = aggregateReport(rows);
 
     return jsonOk({
       totals,
-      rows: splits.map((item) => ({
-        ...formatSplitForFrontend({
-          ...item,
-          workspaceId: item.timeEntry.workspaceId
-        }),
-        user: item.user,
-        project: item.project
-      }))
+      rows
     });
   } catch (error) {
     return jsonError(error);

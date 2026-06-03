@@ -66,6 +66,29 @@ export interface TimeEntry {
   rejectionReason?: string;
 }
 
+export interface EmployeeHoursReportRow {
+  id: string;
+  date: string;
+  userId: string;
+  totalHours: number;
+  eveningHours: number;
+  nightHours: number;
+  user: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+}
+
+export interface EmployeeHoursReport {
+  totals: {
+    totalHours: number;
+    eveningHours: number;
+    nightHours: number;
+  };
+  rows: EmployeeHoursReportRow[];
+}
+
 export interface EmployeeProfile {
   id: string;
   userId: string;

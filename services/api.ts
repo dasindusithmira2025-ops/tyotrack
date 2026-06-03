@@ -1,4 +1,4 @@
-import { EntryStatus, Company, Project, TimeEntry, User, UserRole, Workspace } from "../types";
+import { EntryStatus, Company, EmployeeHoursReport, Project, TimeEntry, User, UserRole, Workspace } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -285,6 +285,24 @@ export const api = {
       query.set("userId", userId);
     }
     return request<TimeEntry[]>(`/api/time-entries?${query.toString()}`);
+  },
+
+  getEmployeeHoursReport: async (
+    companyId: string,
+    startDate: string,
+    endDate: string,
+    userId?: string
+  ): Promise<EmployeeHoursReport> => {
+    const tenantId = await getTenantId(companyId);
+    const query = new URLSearchParams({
+      tenantId,
+      startDate,
+      endDate
+    });
+    if (userId) {
+      query.set("userId", userId);
+    }
+    return request<EmployeeHoursReport>(`/api/reports?${query.toString()}`);
   },
 
   getEmployees: async (companyId: string) => {
