@@ -84,6 +84,7 @@ export const Dashboard = () => {
   const [adminMonthCursor, setAdminMonthCursor] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   );
+  const [adminMonthApprovedEntries, setAdminMonthApprovedEntries] = useState<TimeEntry[]>([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -295,11 +296,42 @@ export const Dashboard = () => {
   const adminMonthEnd = new Date(adminMonthCursor.getFullYear(), adminMonthCursor.getMonth() + 1, 0);
   const adminMonthStartKey = dateKeyFromLocalDate(adminMonthStart);
   const adminMonthEndKey = dateKeyFromLocalDate(adminMonthEnd);
-  const adminApprovedEntries = entries.filter((entry) => entry.status === EntryStatus.APPROVED);
-  const adminApprovedEntriesForMonth = adminApprovedEntries.filter(
-    (entry) => entry.date >= adminMonthStartKey && entry.date <= adminMonthEndKey
-  );
+  const adminApprovedEntriesForMonth = adminMonthApprovedEntries;
   const adminTotalHoursMonth = adminApprovedEntriesForMonth.reduce((sum, entry) => sum + entry.totalHours, 0);
+
+  useEffect(() => {
+    if (!isAdmin || !user.companyId) {
+      setAdminMonthApprovedEntries([]);
+      return;
+    }
+
+    let isCurrent = true;
+
+    const loadAdminMonthApprovedEntries = async () => {
+      try {
+        const monthlyEntries = await api.getTimeEntries(undefined, user.companyId, {
+          startDate: adminMonthStartKey,
+          endDate: adminMonthEndKey,
+          status: EntryStatus.APPROVED
+        });
+
+        if (isCurrent) {
+          setAdminMonthApprovedEntries(monthlyEntries);
+        }
+      } catch (err) {
+        console.error(err);
+        if (isCurrent) {
+          setAdminMonthApprovedEntries([]);
+        }
+      }
+    };
+
+    loadAdminMonthApprovedEntries();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [adminMonthEndKey, adminMonthStartKey, entries, isAdmin, user.companyId]);
 
   const adminEmployeeHours = useMemo(() => {
     if (!isAdmin) return [] as Array<{ id: string; name: string; email: string; hours: number }>;
