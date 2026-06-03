@@ -48,6 +48,54 @@ describe("Reporting", () => {
         totalHours: 6.25,
         eveningHours: 3.25,
         nightHours: 0,
+        totalHoursSummed: 6.25,
+        eveningHoursSummed: 3.25,
+        nightHoursSummed: 0,
+        user: {
+          id: "employee-1",
+          name: "Pasindu",
+          email: ""
+        }
+      }
+    ]);
+  });
+
+  it("sums duplicate daily employee groups across locations", () => {
+    const result = formatDailyEmployeeSummaryRows(
+      [
+        {
+          localDate: "2026-05-28",
+          userId: "employee-1",
+          _sum: {
+            totalHours: 5,
+            eveningHours: 1.5,
+            nightHours: 0
+          }
+        },
+        {
+          localDate: "2026-05-28",
+          userId: "employee-1",
+          _sum: {
+            totalHours: 3.25,
+            eveningHours: 0.75,
+            nightHours: 1.25
+          }
+        }
+      ],
+      [{ id: "employee-1", name: "Pasindu", email: "" }]
+    );
+
+    expect(result).toEqual([
+      {
+        id: "2026-05-28:employee-1",
+        date: "2026-05-28",
+        userId: "employee-1",
+        totalHours: 8.25,
+        eveningHours: 2.25,
+        nightHours: 1.25,
+        totalHoursSummed: 8.25,
+        eveningHoursSummed: 2.25,
+        nightHoursSummed: 1.25,
         user: {
           id: "employee-1",
           name: "Pasindu",

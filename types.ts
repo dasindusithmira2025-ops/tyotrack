@@ -73,6 +73,9 @@ export interface EmployeeHoursReportRow {
   totalHours: number;
   eveningHours: number;
   nightHours: number;
+  totalHoursSummed: number;
+  eveningHoursSummed: number;
+  nightHoursSummed: number;
   user: {
     id: string;
     name: string;

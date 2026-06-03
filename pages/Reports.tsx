@@ -52,7 +52,10 @@ export const Reports = () => {
       'Employee',
       'Total Hours',
       'Evening Hours',
-      'Night Hours'
+      'Night Hours',
+      'Total Hours (Summed)',
+      'Evening Hours (Summed)',
+      'Night Hours (Summed)'
     ];
 
     const csvRows = rows.map((row) => [
@@ -60,7 +63,10 @@ export const Reports = () => {
       row.user?.name || 'Unknown Employee',
       row.totalHours.toFixed(2),
       row.eveningHours.toFixed(2),
-      row.nightHours.toFixed(2)
+      row.nightHours.toFixed(2),
+      row.totalHoursSummed.toFixed(2),
+      row.eveningHoursSummed.toFixed(2),
+      row.nightHoursSummed.toFixed(2)
     ]);
 
     const content = buildCsv(headers, csvRows);
@@ -134,6 +140,9 @@ export const Reports = () => {
                   <th className="px-6 py-4 text-right">Total</th>
                   <th className="px-6 py-4 text-right">Evening</th>
                   <th className="px-6 py-4 text-right">Night</th>
+                  <th className="px-6 py-4 text-right">Total Hours (Summed)</th>
+                  <th className="px-6 py-4 text-right">Evening Hours (Summed)</th>
+                  <th className="px-6 py-4 text-right">Night Hours (Summed)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800 text-slate-300">
@@ -160,12 +169,21 @@ export const Reports = () => {
                       <td className="px-6 py-4 text-right font-semibold text-indigo-300">
                         {row.nightHours.toFixed(2)}h
                       </td>
+                      <td className="px-6 py-4 text-right font-bold text-emerald-300 bg-slate-800/10">
+                        {row.totalHoursSummed.toFixed(2)}h
+                      </td>
+                      <td className="px-6 py-4 text-right font-semibold text-orange-200">
+                        {row.eveningHoursSummed.toFixed(2)}h
+                      </td>
+                      <td className="px-6 py-4 text-right font-semibold text-indigo-200">
+                        {row.nightHoursSummed.toFixed(2)}h
+                      </td>
                     </tr>
                   );
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
                       <Table2 className="w-8 h-8 mx-auto mb-2 opacity-20" />
                       No approved entries found for the selected range.
                     </td>
