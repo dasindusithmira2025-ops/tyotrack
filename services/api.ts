@@ -278,11 +278,28 @@ export const api = {
     });
   },
 
-  getTimeEntries: async (userId: string | undefined, companyId: string): Promise<TimeEntry[]> => {
+  getTimeEntries: async (
+    userId: string | undefined,
+    companyId: string,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      status?: EntryStatus;
+    }
+  ): Promise<TimeEntry[]> => {
     const tenantId = await getTenantId(companyId);
     const query = new URLSearchParams({ tenantId });
     if (userId) {
       query.set("userId", userId);
+    }
+    if (filters?.startDate) {
+      query.set("startDate", filters.startDate);
+    }
+    if (filters?.endDate) {
+      query.set("endDate", filters.endDate);
+    }
+    if (filters?.status) {
+      query.set("status", filters.status);
     }
     return request<TimeEntry[]>(`/api/time-entries?${query.toString()}`);
   },
