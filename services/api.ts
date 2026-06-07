@@ -322,6 +322,38 @@ export const api = {
     return request<EmployeeHoursReport>(`/api/reports?${query.toString()}`);
   },
 
+  getEmployeeHoursReportExcel: async (
+    companyId: string,
+    startDate: string,
+    endDate: string,
+    userId?: string
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const tenantId = await getTenantId(companyId);
+    const query = new URLSearchParams({
+      tenantId,
+      startDate,
+      endDate,
+      format: "xlsx"
+    });
+    if (userId) {
+      query.set("userId", userId);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/reports?${query.toString()}`, {
+      credentials: "include"
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || "Failed to export report");
+    }
+
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const filename = disposition.match(/filename="([^"]+)"/)?.[1]
+      ?? `employee-hours_${startDate}_to_${endDate}.xlsx`;
+
+    return { blob: await response.blob(), filename };
+  },
+
   getEmployees: async (companyId: string) => {
     const tenantId = await getTenantId(companyId);
     const users = await request<any[]>(`/api/users?tenantId=${encodeURIComponent(tenantId)}&role=EMPLOYEE`);

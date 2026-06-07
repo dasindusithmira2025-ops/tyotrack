@@ -70,6 +70,8 @@ export interface EmployeeHoursReportRow {
   id: string;
   date: string;
   userId: string;
+  locationId: string;
+  locationName: string;
   totalHours: number;
   eveningHours: number;
   nightHours: number;

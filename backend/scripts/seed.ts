@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { DateTime } from "luxon";
 import { hashPassword } from "../src/lib/password";
 
 const prisma = new PrismaClient();
@@ -21,8 +22,8 @@ const REPORT_DEMO_ENTRIES = [
     id: "report-demo-synlab-2026-05-28",
     splitId: "report-demo-split-synlab-2026-05-28",
     projectId: "project-synlab",
-    startTime: new Date("2026-05-28T15:00:00.000Z"),
-    endTime: new Date("2026-05-28T16:45:00.000Z"),
+    startClock: { hour: 18, minute: 0 },
+    endClock: { hour: 19, minute: 45 },
     totalHours: 1.75,
     eveningHours: 1.75,
     nightHours: 0,
@@ -32,8 +33,8 @@ const REPORT_DEMO_ENTRIES = [
     id: "report-demo-espresso-house-2026-05-28",
     splitId: "report-demo-split-espresso-house-2026-05-28",
     projectId: "project-espresso-house",
-    startTime: new Date("2026-05-28T17:00:00.000Z"),
-    endTime: new Date("2026-05-28T18:30:00.000Z"),
+    startClock: { hour: 20, minute: 0 },
+    endClock: { hour: 21, minute: 30 },
     totalHours: 1.5,
     eveningHours: 1.5,
     nightHours: 0,
@@ -43,8 +44,8 @@ const REPORT_DEMO_ENTRIES = [
     id: "report-demo-extra-works-2026-05-28",
     splitId: "report-demo-split-extra-works-2026-05-28",
     projectId: "project-extra-works",
-    startTime: new Date("2026-05-28T10:00:00.000Z"),
-    endTime: new Date("2026-05-28T13:00:00.000Z"),
+    startClock: { hour: 10, minute: 0 },
+    endClock: { hour: 13, minute: 0 },
     totalHours: 3,
     eveningHours: 0,
     nightHours: 0,
@@ -233,10 +234,21 @@ async function main() {
     });
   }
 
-  const reportDemoDate = "2026-05-28";
-  const reportDemoDateUtc = new Date("2026-05-27T21:00:00.000Z");
+  const reportDemoLocalDay = DateTime.now().setZone("Europe/Helsinki").minus({ days: 1 }).startOf("day");
+  const reportDemoDate = reportDemoLocalDay.toISODate() as string;
+  const reportDemoDateUtc = reportDemoLocalDay.toUTC().toJSDate();
 
   for (const reportEntry of REPORT_DEMO_ENTRIES) {
+    const startTime = reportDemoLocalDay
+      .set({ hour: reportEntry.startClock.hour, minute: reportEntry.startClock.minute })
+      .toUTC()
+      .toJSDate();
+    const endTime = reportDemoLocalDay
+      .set({ hour: reportEntry.endClock.hour, minute: reportEntry.endClock.minute })
+      .toUTC()
+      .toJSDate();
+    const approvedAt = reportDemoLocalDay.set({ hour: 22, minute: 0 }).toUTC().toJSDate();
+
     await prisma.timeEntry.upsert({
       where: { id: reportEntry.id },
       update: {
@@ -245,14 +257,14 @@ async function main() {
         createdById: null,
         projectId: reportEntry.projectId,
         workspaceId: acmeTenantId,
-        startTime: reportEntry.startTime,
-        endTime: reportEntry.endTime,
+        startTime,
+        endTime,
         notes: reportEntry.notes,
         status: "APPROVED",
         totalHours: reportEntry.totalHours,
         eveningHours: reportEntry.eveningHours,
         nightHours: reportEntry.nightHours,
-        lockedAt: new Date("2026-05-28T19:00:00.000Z")
+        lockedAt: approvedAt
       },
       create: {
         id: reportEntry.id,
@@ -260,14 +272,14 @@ async function main() {
         userId: reportDemoEmployee.id,
         projectId: reportEntry.projectId,
         workspaceId: acmeTenantId,
-        startTime: reportEntry.startTime,
-        endTime: reportEntry.endTime,
+        startTime,
+        endTime,
         notes: reportEntry.notes,
         status: "APPROVED",
         totalHours: reportEntry.totalHours,
         eveningHours: reportEntry.eveningHours,
         nightHours: reportEntry.nightHours,
-        lockedAt: new Date("2026-05-28T19:00:00.000Z")
+        lockedAt: approvedAt
       }
     });
 
@@ -280,15 +292,15 @@ async function main() {
         projectId: reportEntry.projectId,
         date: reportDemoDateUtc,
         localDate: reportDemoDate,
-        startTime: reportEntry.startTime,
-        endTime: reportEntry.endTime,
+        startTime,
+        endTime,
         status: "APPROVED",
         totalHours: reportEntry.totalHours,
         eveningHours: reportEntry.eveningHours,
         nightHours: reportEntry.nightHours,
         notes: reportEntry.notes,
         approvedById: null,
-        approvedAt: new Date("2026-05-28T19:00:00.000Z"),
+        approvedAt,
         rejectionReason: null
       },
       create: {
@@ -299,14 +311,14 @@ async function main() {
         projectId: reportEntry.projectId,
         date: reportDemoDateUtc,
         localDate: reportDemoDate,
-        startTime: reportEntry.startTime,
-        endTime: reportEntry.endTime,
+        startTime,
+        endTime,
         status: "APPROVED",
         totalHours: reportEntry.totalHours,
         eveningHours: reportEntry.eveningHours,
         nightHours: reportEntry.nightHours,
         notes: reportEntry.notes,
-        approvedAt: new Date("2026-05-28T19:00:00.000Z")
+        approvedAt
       }
     });
   }

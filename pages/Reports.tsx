@@ -7,17 +7,18 @@ import { formatDate, dateKeyFromLocalDate } from '../lib/utils';
 import { Calendar, Table2, Download } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from 'sonner';
-import { buildCsv, downloadCsv } from '../lib/csv';
 
 export const Reports = () => {
   const [rows, setRows] = useState<EmployeeHoursReportRow[]>([]);
   const [totals, setTotals] = useState({ totalHours: 0, eveningHours: 0, nightHours: 0 });
   const [loading, setLoading] = useState(true);
   
-  // Date Filters (Default to this month)
+  // Date Filters (Default to the last 30 days so recent seeded/demo rows stay visible)
   const today = new Date();
-  const firstDay = dateKeyFromLocalDate(new Date(today.getFullYear(), today.getMonth(), 1));
-  const lastDay = dateKeyFromLocalDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+  const defaultStart = new Date(today);
+  defaultStart.setDate(today.getDate() - 30);
+  const firstDay = dateKeyFromLocalDate(defaultStart);
+  const lastDay = dateKeyFromLocalDate(today);
   
   const [dateRange, setDateRange] = useState({ start: firstDay, end: lastDay });
 
@@ -41,38 +42,30 @@ export const Reports = () => {
     loadData();
   }, [dateRange, user.companyId]);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (rows.length === 0) {
       toast.error('No rows to export');
       return;
     }
 
-    const headers = [
-      'Date',
-      'Employee',
-      'Total Hours',
-      'Evening Hours',
-      'Night Hours',
-      'Total Hours (Summed)',
-      'Evening Hours (Summed)',
-      'Night Hours (Summed)'
-    ];
-
-    const csvRows = rows.map((row) => [
-      row.date,
-      row.user?.name || 'Unknown Employee',
-      row.totalHours.toFixed(2),
-      row.eveningHours.toFixed(2),
-      row.nightHours.toFixed(2),
-      row.totalHoursSummed.toFixed(2),
-      row.eveningHoursSummed.toFixed(2),
-      row.nightHoursSummed.toFixed(2)
-    ]);
-
-    const content = buildCsv(headers, csvRows);
-    const filename = `daily-employee-summary_${dateRange.start}_to_${dateRange.end}.csv`;
-    downloadCsv(filename, content);
-    toast.success(`Exported ${rows.length} rows to ${filename}`);
+    try {
+      const { blob, filename } = await api.getEmployeeHoursReportExcel(
+        user.companyId,
+        dateRange.start,
+        dateRange.end
+      );
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${rows.length} rows to ${filename}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export report');
+    }
   };
 
   return (
@@ -87,7 +80,7 @@ export const Reports = () => {
           <div className="flex flex-col sm:flex-row gap-3">
             <Button onClick={handleExport} variant="outline" className="gap-2 h-10">
               <Download className="w-4 h-4" />
-              Export CSV
+              Export Excel
             </Button>
 
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 glass-surface panel-lift rounded-lg px-3 py-1.5 h-auto sm:h-10">
@@ -137,6 +130,7 @@ export const Reports = () => {
                 <tr>
                   <th className="px-6 py-4">Date</th>
                   <th className="px-6 py-4">Employee</th>
+                  <th className="px-6 py-4">Location</th>
                   <th className="px-6 py-4 text-right">Total</th>
                   <th className="px-6 py-4 text-right">Evening</th>
                   <th className="px-6 py-4 text-right">Night</th>
@@ -159,6 +153,9 @@ export const Reports = () => {
                           </div>
                           {empName}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-300">
+                        {row.locationName}
                       </td>
                       <td className="px-6 py-4 text-right font-bold text-white bg-slate-800/10">
                         {row.totalHours.toFixed(2)}h
@@ -183,7 +180,7 @@ export const Reports = () => {
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                       <Table2 className="w-8 h-8 mx-auto mb-2 opacity-20" />
                       No approved entries found for the selected range.
                     </td>
@@ -193,8 +190,8 @@ export const Reports = () => {
             </table>
           </div>
            <div className="bg-slate-800/30 p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
-            <span>Showing {rows.length} daily summaries</span>
-            <span>Sorted by date descending</span>
+            <span>Showing {rows.length} daily location summaries</span>
+            <span>Summed columns include all locations for the employee and day</span>
           </div>
         </div>
 
