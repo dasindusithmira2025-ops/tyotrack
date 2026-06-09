@@ -333,7 +333,8 @@ export const api = {
       tenantId,
       startDate,
       endDate,
-      format: "xlsx"
+      format: "xlsx",
+      _: String(Date.now())
     });
     if (userId) {
       query.set("userId", userId);

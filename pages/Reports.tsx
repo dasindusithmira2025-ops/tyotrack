@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { api } from '../services/api';
 import { EmployeeHoursReportRow } from '../types';
@@ -41,6 +41,30 @@ export const Reports = () => {
     };
     loadData();
   }, [dateRange, user.companyId]);
+
+  const dailySummaries = useMemo(() => {
+    const summaries = new Map<string, { totalHours: number; eveningHours: number; nightHours: number }>();
+
+    rows.forEach((row) => {
+      const key = `${row.date}:${row.userId}`;
+      const current = summaries.get(key) ?? { totalHours: 0, eveningHours: 0, nightHours: 0 };
+
+      current.totalHours = Number((current.totalHours + row.totalHours).toFixed(2));
+      current.eveningHours = Number((current.eveningHours + row.eveningHours).toFixed(2));
+      current.nightHours = Number((current.nightHours + row.nightHours).toFixed(2));
+      summaries.set(key, current);
+    });
+
+    return summaries;
+  }, [rows]);
+
+  const getDailySummary = (row: EmployeeHoursReportRow) => {
+    return dailySummaries.get(`${row.date}:${row.userId}`) ?? {
+      totalHours: 0,
+      eveningHours: 0,
+      nightHours: 0
+    };
+  };
 
   const handleExport = async () => {
     if (rows.length === 0) {
@@ -142,6 +166,7 @@ export const Reports = () => {
               <tbody className="divide-y divide-slate-800 text-slate-300">
                 {rows.map((row) => {
                   const empName = row.user?.name || 'Unknown Employee';
+                  const dailySummary = getDailySummary(row);
                   
                   return (
                     <tr key={row.id} className="hover:bg-slate-800/30 transition-colors">
@@ -167,13 +192,13 @@ export const Reports = () => {
                         {row.nightHours.toFixed(2)}h
                       </td>
                       <td className="px-6 py-4 text-right font-bold text-emerald-300 bg-slate-800/10">
-                        {row.totalHoursSummed.toFixed(2)}h
+                        {dailySummary.totalHours.toFixed(2)}h
                       </td>
                       <td className="px-6 py-4 text-right font-semibold text-orange-200">
-                        {row.eveningHoursSummed.toFixed(2)}h
+                        {dailySummary.eveningHours.toFixed(2)}h
                       </td>
                       <td className="px-6 py-4 text-right font-semibold text-indigo-200">
-                        {row.nightHoursSummed.toFixed(2)}h
+                        {dailySummary.nightHours.toFixed(2)}h
                       </td>
                     </tr>
                   );

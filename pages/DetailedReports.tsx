@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { api } from '../services/api';
-import { TimeEntry, Project, User, EntryStatus, UserRole } from '../types';
+import { TimeEntry, Project, EntryStatus } from '../types';
 import { Button } from '../components/ui/Button';
 import { Download, Calendar, Briefcase, Filter, Moon, Sun } from 'lucide-react';
-import { formatDate, formatTime, formatDateTime24, cn, dateKeyFromLocalDate } from '../lib/utils';
+import { formatDate, formatTime, cn, dateKeyFromLocalDate } from '../lib/utils';
 import { toast } from 'sonner';
 import { buildCsv, downloadCsv } from '../lib/csv';
 
@@ -54,6 +54,29 @@ export const DetailedReports = () => {
 
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || id;
 
+  const dailySummaries = useMemo(() => {
+    const summaryByDate = new Map<string, { totalHours: number; eveningHours: number; nightHours: number }>();
+
+    entries.forEach((entry) => {
+      if (entry.date < startDate || entry.date > endDate) {
+        return;
+      }
+
+      const current = summaryByDate.get(entry.date) ?? {
+        totalHours: 0,
+        eveningHours: 0,
+        nightHours: 0
+      };
+
+      current.totalHours = Number((current.totalHours + entry.totalHours).toFixed(2));
+      current.eveningHours = Number((current.eveningHours + entry.eveningHours).toFixed(2));
+      current.nightHours = Number((current.nightHours + entry.nightHours).toFixed(2));
+      summaryByDate.set(entry.date, current);
+    });
+
+    return summaryByDate;
+  }, [entries, startDate, endDate]);
+
   const handleExport = () => {
     if (filteredEntries.length === 0) {
       toast.error('No rows to export');
@@ -68,11 +91,16 @@ export const DetailedReports = () => {
       'Total Hours',
       'Evening Hours',
       'Night Hours',
+      'Total Hours (Summed)',
+      'Evening Hours (Summed)',
+      'Night Hours (Summed)',
       'Status',
       'Notes'
     ];
 
-    const rows = filteredEntries.map((entry) => [
+    const rows = filteredEntries.map((entry) => {
+      const summary = constSummary(entry.date);
+      return [
       entry.date,
       getProjectName(entry.projectId),
       formatTime(entry.startTime),
@@ -80,15 +108,23 @@ export const DetailedReports = () => {
       entry.totalHours.toFixed(2),
       entry.eveningHours.toFixed(2),
       entry.nightHours.toFixed(2),
+      summary.totalHours.toFixed(2),
+      summary.eveningHours.toFixed(2),
+      summary.nightHours.toFixed(2),
       entry.status,
       entry.notes ?? ''
-    ]);
+    ];
+    });
 
     const content = buildCsv(headers, rows);
     const filename = `detailed-report_${startDate}_to_${endDate}.csv`;
     downloadCsv(filename, content);
     toast.success(`Exported ${filteredEntries.length} rows to ${filename}`);
   };
+
+  function constSummary(date: string) {
+    return dailySummaries.get(date) ?? { totalHours: 0, eveningHours: 0, nightHours: 0 };
+  }
 
   return (
     <Layout>
@@ -182,6 +218,9 @@ export const DetailedReports = () => {
                   <th className="px-6 py-4">Time Interval</th>
                   <th className="px-6 py-4 text-right">Total Hrs</th>
                   <th className="px-6 py-4 text-center">Breakdown</th>
+                  <th className="px-6 py-4 text-right">Total Hrs (Summed)</th>
+                  <th className="px-6 py-4 text-right">Evening Hrs (Summed)</th>
+                  <th className="px-6 py-4 text-right">Night Hrs (Summed)</th>
                   <th className="px-6 py-4 text-right">Status</th>
                 </tr>
               </thead>
@@ -213,6 +252,15 @@ export const DetailedReports = () => {
                          {entry.eveningHours === 0 && entry.nightHours === 0 && <span className="text-slate-600 text-xs">-</span>}
                       </div>
                     </td>
+                    <td className="px-6 py-4 text-right font-bold text-emerald-300">
+                      {constSummary(entry.date).totalHours.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-orange-200">
+                      {constSummary(entry.date).eveningHours.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-indigo-200">
+                      {constSummary(entry.date).nightHours.toFixed(2)}
+                    </td>
                     <td className="px-6 py-4 text-right">
                        <span className={cn(
                           "px-2 py-1 rounded text-xs font-bold border",
@@ -227,7 +275,7 @@ export const DetailedReports = () => {
                 ))}
                 {filteredEntries.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                       No entries found matching your filters.
                     </td>
                   </tr>
@@ -238,7 +286,7 @@ export const DetailedReports = () => {
           
           <div className="bg-slate-800/30 p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
             <span>Showing {filteredEntries.length} entries</span>
-            <span>Generated at {formatDateTime24(new Date())}</span>
+            <span>Summed values cover the full day across all locations</span>
           </div>
         </div>
       </div>
