@@ -1,10 +1,14 @@
 import * as XLSX from "xlsx";
-import type { DailyEmployeeSummaryRow } from "@/lib/reporting";
+import { DateTime } from "luxon";
+import type { IndividualEmployeeReportRow } from "@/lib/reporting";
 
 const REPORT_HEADERS = [
   "Date",
   "Employee",
+  "Project",
   "Location",
+  "Start Time",
+  "End Time",
   "Total Hours",
   "Evening Hours",
   "Night Hours",
@@ -13,11 +17,14 @@ const REPORT_HEADERS = [
   "Night Hours (Summed)"
 ];
 
-export function buildEmployeeHoursWorkbook(rows: DailyEmployeeSummaryRow[]): Buffer {
+export function buildEmployeeHoursWorkbook(rows: IndividualEmployeeReportRow[]): Buffer {
   const data = rows.map((row) => [
     row.date,
     row.user.name,
+    row.projectName,
     row.locationName,
+    DateTime.fromISO(row.startTime).setZone("Europe/Helsinki").toFormat("HH:mm"),
+    DateTime.fromISO(row.endTime).setZone("Europe/Helsinki").toFormat("HH:mm"),
     row.totalHours,
     row.eveningHours,
     row.nightHours,
@@ -31,6 +38,9 @@ export function buildEmployeeHoursWorkbook(rows: DailyEmployeeSummaryRow[]): Buf
     { wch: 12 },
     { wch: 24 },
     { wch: 24 },
+    { wch: 24 },
+    { wch: 22 },
+    { wch: 22 },
     { wch: 14 },
     { wch: 16 },
     { wch: 14 },

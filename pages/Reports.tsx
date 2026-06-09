@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { api } from '../services/api';
 import { EmployeeHoursReportRow } from '../types';
-import { formatDate, dateKeyFromLocalDate } from '../lib/utils';
+import { formatDate, formatTime, dateKeyFromLocalDate } from '../lib/utils';
 import { Calendar, Table2, Download } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from 'sonner';
@@ -154,7 +154,10 @@ export const Reports = () => {
                 <tr>
                   <th className="px-6 py-4">Date</th>
                   <th className="px-6 py-4">Employee</th>
+                  <th className="px-6 py-4">Project</th>
                   <th className="px-6 py-4">Location</th>
+                  <th className="px-6 py-4">Start Time</th>
+                  <th className="px-6 py-4">End Time</th>
                   <th className="px-6 py-4 text-right">Total</th>
                   <th className="px-6 py-4 text-right">Evening</th>
                   <th className="px-6 py-4 text-right">Night</th>
@@ -180,7 +183,16 @@ export const Reports = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-slate-300">
+                        {row.projectName}
+                      </td>
+                      <td className="px-6 py-4 text-slate-300">
                         {row.locationName}
+                      </td>
+                      <td className="px-6 py-4 font-mono text-slate-400 whitespace-nowrap">
+                        {formatTime(row.startTime)}
+                      </td>
+                      <td className="px-6 py-4 font-mono text-slate-400 whitespace-nowrap">
+                        {formatTime(row.endTime)}
                       </td>
                       <td className="px-6 py-4 text-right font-bold text-white bg-slate-800/10">
                         {row.totalHours.toFixed(2)}h
@@ -205,7 +217,7 @@ export const Reports = () => {
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={12} className="px-6 py-12 text-center text-slate-500">
                       <Table2 className="w-8 h-8 mx-auto mb-2 opacity-20" />
                       No approved entries found for the selected range.
                     </td>
@@ -215,8 +227,8 @@ export const Reports = () => {
             </table>
           </div>
            <div className="bg-slate-800/30 p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
-            <span>Showing {rows.length} daily location summaries</span>
-            <span>Summed columns include all locations for the employee and day</span>
+            <span>Showing {rows.length} approved entry records</span>
+            <span>Summed columns include all records for the employee and day</span>
           </div>
         </div>
 

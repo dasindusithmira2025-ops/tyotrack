@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth, resolveTenant } from "@/lib/auth-guard";
 import { ApiError, jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
-import { aggregateReport, formatDailyEmployeeSummaryRows } from "@/lib/reporting";
+import { aggregateReport, formatIndividualEmployeeReportRows } from "@/lib/reporting";
 import { buildEmployeeHoursWorkbook } from "@/lib/report-export";
 
 export const runtime = "nodejs";
@@ -23,8 +23,7 @@ export async function GET(req: NextRequest) {
 
     const userId = session.role === "EMPLOYEE" ? session.sub : requestedUserId;
 
-    const groups = await prisma.timeEntrySplit.groupBy({
-      by: ["localDate", "userId", "projectId", "timeEntryId"],
+    const splits = await prisma.timeEntrySplit.findMany({
       where: {
         tenantId,
         status: "APPROVED",
@@ -34,66 +33,35 @@ export async function GET(req: NextRequest) {
         },
         ...(userId ? { userId } : {})
       },
-      _sum: {
-        totalHours: true,
-        eveningHours: true,
-        nightHours: true
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            workspace: {
+              select: { id: true, name: true }
+            }
+          }
+        },
+        timeEntry: {
+          select: {
+            workspace: {
+              select: { id: true, name: true }
+            }
+          }
+        }
       },
-      orderBy: [{ localDate: "desc" }, { userId: "asc" }, { projectId: "asc" }, { timeEntryId: "asc" }]
+      orderBy: [{ localDate: "desc" }, { startTime: "desc" }, { userId: "asc" }]
     });
 
-    const userIds = [...new Set(groups.map((group) => group.userId).filter(Boolean))];
-    const projectIds = [...new Set(groups.map((group) => group.projectId).filter(Boolean))];
-    const timeEntryIds = [...new Set(groups.map((group) => group.timeEntryId).filter(Boolean))];
-    const [users, projects, timeEntries] = await Promise.all([
-      userIds.length
-        ? prisma.user.findMany({
-          where: {
-            id: { in: userIds },
-            tenantId
-          },
-          select: { id: true, name: true, email: true }
-        })
-        : [],
-      projectIds.length
-        ? prisma.project.findMany({
-            where: {
-              id: { in: projectIds },
-              tenantId
-            },
-            select: {
-              id: true,
-              name: true,
-              workspace: { select: { id: true, name: true } }
-            }
-          })
-        : [],
-      timeEntryIds.length
-        ? prisma.timeEntry.findMany({
-            where: {
-              id: { in: timeEntryIds },
-              tenantId
-            },
-            select: {
-              id: true,
-              workspace: { select: { id: true, name: true } }
-            }
-          })
-        : []
-    ]);
-    const workspaceByTimeEntryId = new Map(timeEntries.map((entry) => [entry.id, entry.workspace]));
-    const rows = formatDailyEmployeeSummaryRows(
-      groups.map((group) => {
-        const workspace = workspaceByTimeEntryId.get(group.timeEntryId);
-        return {
-          ...group,
-          workspaceId: workspace?.id ?? null,
-          workspaceName: workspace?.name ?? null
-        };
-      }),
-      users,
-      projects
-    );
+    const rows = formatIndividualEmployeeReportRows(splits.map((split) => ({
+      ...split,
+      workspaceId: split.timeEntry.workspace?.id ?? null,
+      workspaceName: split.timeEntry.workspace?.name ?? null
+    })));
     const totals = aggregateReport(rows);
 
     if (format === "xlsx") {

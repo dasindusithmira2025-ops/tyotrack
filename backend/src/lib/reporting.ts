@@ -13,40 +13,43 @@ interface ReportTotals {
   nightHours: number;
 }
 
-export interface DailyEmployeeSummaryGroup {
-  localDate: string | null;
-  userId: string | null;
-  projectId: string | null;
+export interface IndividualEmployeeReportItem {
+  id: string;
+  localDate: string;
+  userId: string;
+  projectId: string;
+  startTime: Date | string;
+  endTime: Date | string;
+  totalHours?: number | null;
+  eveningHours?: number | null;
+  nightHours?: number | null;
   workspaceId?: string | null;
   workspaceName?: string | null;
-  _sum: {
-    totalHours?: number | null;
-    eveningHours?: number | null;
-    nightHours?: number | null;
+  user: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
+  project: {
+    id: string;
+    name?: string | null;
+    workspace?: {
+      id: string;
+      name?: string | null;
+    } | null;
   };
 }
 
-export interface ReportUser {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-}
-
-export interface ReportProject {
-  id: string;
-  name?: string | null;
-  workspace?: {
-    id: string;
-    name?: string | null;
-  } | null;
-}
-
-export interface DailyEmployeeSummaryRow {
+export interface IndividualEmployeeReportRow {
   id: string;
   date: string;
   userId: string;
+  projectId: string;
+  projectName: string;
   locationId: string;
   locationName: string;
+  startTime: string;
+  endTime: string;
   totalHours: number;
   eveningHours: number;
   nightHours: number;
@@ -80,88 +83,48 @@ export function aggregateReport(items: ReportItem[]): ReportTotals {
   );
 }
 
-export function formatDailyEmployeeSummaryRows(
-  groups: DailyEmployeeSummaryGroup[],
-  users: ReportUser[],
-  projects: ReportProject[]
-): DailyEmployeeSummaryRow[] {
-  const usersById = new Map(users.map((user) => [user.id, user]));
-  const projectsById = new Map(projects.map((project) => [project.id, project]));
-  const rowsByDayUserAndLocation = new Map<
-    string,
-    {
-      date: string;
-      userId: string;
-      locationId: string;
-      locationName: string;
-      totalHours: number;
-      eveningHours: number;
-      nightHours: number;
-    }
-  >();
-
-  groups.forEach((group) => {
-    const userId = group.userId ?? "";
-    const date = group.localDate ?? "";
-    const project = group.projectId ? projectsById.get(group.projectId) : undefined;
-    const locationId = group.workspaceId
-      ?? project?.workspace?.id
-      ?? (group.projectId ? `project:${group.projectId}` : "unassigned-location");
-    const locationName = group.workspaceName?.trim()
-      || project?.workspace?.name?.trim()
-      || project?.name?.trim()
-      || "Unassigned Location";
-    const key = `${date || "unknown-date"}:${userId || "unknown-user"}:${locationId}`;
-    const existing = rowsByDayUserAndLocation.get(key) ?? {
-      date,
-      userId,
-      locationId,
-      locationName,
-      totalHours: 0,
-      eveningHours: 0,
-      nightHours: 0
-    };
-
-    existing.totalHours = roundHours(existing.totalHours + numericValue(group._sum.totalHours));
-    existing.eveningHours = roundHours(existing.eveningHours + numericValue(group._sum.eveningHours));
-    existing.nightHours = roundHours(existing.nightHours + numericValue(group._sum.nightHours));
-    rowsByDayUserAndLocation.set(key, existing);
-  });
-
+export function formatIndividualEmployeeReportRows(
+  items: IndividualEmployeeReportItem[]
+): IndividualEmployeeReportRow[] {
   const dailyTotals = new Map<string, ReportTotals>();
-  rowsByDayUserAndLocation.forEach((row) => {
-    const key = `${row.date || "unknown-date"}:${row.userId || "unknown-user"}`;
+  items.forEach((item) => {
+    const key = `${item.localDate}:${item.userId}`;
     const existing = dailyTotals.get(key) ?? { totalHours: 0, eveningHours: 0, nightHours: 0 };
-    existing.totalHours = roundHours(existing.totalHours + row.totalHours);
-    existing.eveningHours = roundHours(existing.eveningHours + row.eveningHours);
-    existing.nightHours = roundHours(existing.nightHours + row.nightHours);
+    existing.totalHours = roundHours(existing.totalHours + numericValue(item.totalHours));
+    existing.eveningHours = roundHours(existing.eveningHours + numericValue(item.eveningHours));
+    existing.nightHours = roundHours(existing.nightHours + numericValue(item.nightHours));
     dailyTotals.set(key, existing);
   });
 
-  return Array.from(rowsByDayUserAndLocation.values()).map((row) => {
-    const user = row.userId ? usersById.get(row.userId) : undefined;
-    const summed = dailyTotals.get(`${row.date || "unknown-date"}:${row.userId || "unknown-user"}`) ?? {
+  return items.map((item) => {
+    const summed = dailyTotals.get(`${item.localDate}:${item.userId}`) ?? {
       totalHours: 0,
       eveningHours: 0,
       nightHours: 0
     };
 
     return {
-      id: `${row.date || "unknown-date"}:${row.userId || "unknown-user"}:${row.locationId}`,
-      date: row.date,
-      userId: row.userId,
-      locationId: row.locationId,
-      locationName: row.locationName,
-      totalHours: row.totalHours,
-      eveningHours: row.eveningHours,
-      nightHours: row.nightHours,
+      id: item.id,
+      date: item.localDate,
+      userId: item.userId,
+      projectId: item.projectId,
+      projectName: item.project.name?.trim() || "Unknown Project",
+      locationId: item.workspaceId ?? item.project.workspace?.id ?? "unassigned-location",
+      locationName: item.workspaceName?.trim()
+        || item.project.workspace?.name?.trim()
+        || "Unassigned Location",
+      startTime: new Date(item.startTime).toISOString(),
+      endTime: new Date(item.endTime).toISOString(),
+      totalHours: numericValue(item.totalHours),
+      eveningHours: numericValue(item.eveningHours),
+      nightHours: numericValue(item.nightHours),
       totalHoursSummed: summed.totalHours,
       eveningHoursSummed: summed.eveningHours,
       nightHoursSummed: summed.nightHours,
       user: {
-        id: row.userId,
-        name: user?.name?.trim() || "Unknown Employee",
-        email: user?.email?.trim() || ""
+        id: item.userId,
+        name: item.user.name?.trim() || "Unknown Employee",
+        email: item.user.email?.trim() || ""
       }
     };
   });
